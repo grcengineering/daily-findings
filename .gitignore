@@ -50,3 +50,5 @@ dev.db-journal
 src-tauri/target/
 src-tauri/resources/next-standalone/
 src-tauri/resources/node-runtime/
+src-tauri/gen/schemas/
+src-tauri/icons/icon-source.png

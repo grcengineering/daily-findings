@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model DailySession {
+  id              String    @id @default(cuid())
+  date            String    @unique
+  domain          String
+  topic           String
+  topicId         String
+  level           String
+  lessonContent   String
+  scenarioContent String
+  quizContent     String
+  newsContent     String
+  completed       Boolean   @default(false)
+  quizScore       Int?
+  quizTotal       Int?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model TopicProgress {
+  id           String    @id @default(cuid())
+  domain       String
+  topicId      String    @unique
+  topic        String
+  level        String
+  timesStudied Int       @default(0)
+  lastStudied  DateTime?
+  quizScores   String    @default("[]")
+  nextReviewAt DateTime?
+}
+
+model UserStats {
+  id              String  @id @default("user")
+  currentStreak   Int     @default(0)
+  longestStreak   Int     @default(0)
+  totalSessions   Int     @default(0)
+  totalXp         Int     @default(0)
+  currentLevel    Int     @default(1)
+  lastSessionDate String?
+}
+
+model SessionContent {
+  id              String   @id @default(cuid())
+  topicId         String   @unique
+  domain          String
+  topic           String
+  level           String
+  lessonContent   String
+  scenarioContent String
+  quizContent     String
+  confidenceScore Int?
+  generatedAt     DateTime @default(now())
+}
+
+model SessionCompletion {
+  id          String   @id @default(cuid())
+  topicId     String
+  date        String
+  quizScore   Int?
+  quizTotal   Int?
+  completedAt DateTime @default(now())
+
+  @@unique([topicId, date])
+  @@index([topicId])
+  @@index([date])
+}

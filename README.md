@@ -1,3 +1,243 @@
+# Daily Findings (GRC Learning Platform)
+
+Daily Findings is a GRC training platform with two runtime modes:
+
+- a `Next.js` web app for development and browser usage
+- a `Tauri` desktop wrapper that packages the app as a macOS desktop application
+
+The platform delivers daily modules that combine lesson content, scenarios, quizzes, progress tracking, and a news feed.
+
+---
+
+## Current Scope (Important)
+
+This repository currently ships with the **legacy curriculum shape**:
+
+- **8 domains**
+- **15 modules per domain**
+- **no capstone modules yet**
+
+That expansion plan to 12 domains / 174 modules is tracked separately and has not been fully applied in this repo yet.
+
+---
+
+## Core Features
+
+- Daily session recommendation based on completion history
+- Module library grouped by domain/level with completion status
+- Session flow: lesson -> scenario -> quiz
+- XP, streak, and badge tracking
+- Progress dashboard and history views
+- RSS-based GRC news feed with source health/caching metadata
+- AI-generated content pipeline with formatting/factual quality checks
+- Desktop packaging via Tauri with bundled Node runtime
+- Clean-share build mode (ships app with reset learner progress)
+
+---
+
+## Tech Stack
+
+- **Frontend/App**: Next.js 16 (App Router), React 19, TypeScript, Tailwind
+- **Desktop**: Tauri v2 (Rust launcher + packaged resources)
+- **Database**: SQLite + Prisma ORM
+- **Animations/UI**: Framer Motion, Lucide, shadcn/ui patterns
+- **AI Content**: Anthropic SDK integration
+- **News ingestion**: RSS parser + in-memory caching
+
+---
+
+## Repository Layout
+
+- `src/app/` - Next.js routes/pages
+- `src/app/api/` - API route handlers
+- `src/components/` - UI components
+- `src/lib/` - domain logic and shared utilities
+- `data/curriculum.json` - curriculum source loaded by the app
+- `prisma/schema.prisma` - DB schema
+- `scripts/prepare-tauri-sidecar.mjs` - desktop resource packaging script
+- `src-tauri/` - Tauri config, Rust launcher, icons, bundled resources
+
+---
+
+## API Surface (App Router)
+
+- `GET /api/session/today` - returns current recommended session summary
+- `GET /api/session/generate` - returns full generated session content
+- `POST /api/session/complete` - marks completion, updates progress/streak/xp
+- `GET /api/stats` - user stats + recent sessions + domain completion summary
+- `GET /api/progress` - deep progress payload + badges + topic progress
+- `GET /api/library` - library catalog grouped by domain + level
+- `GET /api/news` - news articles + source status + cache metadata
+
+---
+
+## Data Model (Prisma / SQLite)
+
+Primary models:
+
+- `SessionContent` - generated module content by `topicId`
+- `SessionCompletion` - completion events (topic/date/score)
+- `TopicProgress` - long-term per-topic progress metrics
+- `UserStats` - aggregated streak/xp/session stats
+- `DailySession` - legacy session table
+
+Schema file: `prisma/schema.prisma`
+
+---
+
+## Environment Variables
+
+Common local variables:
+
+- `DATABASE_URL` (SQLite connection string)
+- `ANTHROPIC_API_KEY` (required for AI content generation paths)
+
+Notes:
+
+- local env files are in `.env` / `.env.local`
+- avoid committing secrets
+
+---
+
+## Local Development
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Run web app in dev mode:
+
+```bash
+npm run dev
+```
+
+Default dev URL is typically `http://localhost:3000` unless overridden.
+
+---
+
+## Desktop Development & Build (Tauri)
+
+### Desktop dev mode
+
+```bash
+npm run tauri:dev
+```
+
+### Standard desktop build
+
+```bash
+npm run tauri:build
+```
+
+### Clean-share desktop build (recommended for distribution)
+
+```bash
+npm run tauri:build:clean
+```
+
+This build sanitizes learner-progress tables before packaging while preserving generated module content.
+
+---
+
+## Clean-Share Behavior
+
+`tauri:build:clean` sets `TAURI_CLEAN_SHARE_BUILD=1`, which causes the packaging script to reset:
+
+- `SessionCompletion`
+- `DailySession`
+- `TopicProgress`
+- `UserStats`
+
+and keeps:
+
+- `SessionContent`
+
+This gives recipients a fresh learner state but still includes pre-generated modules.
+
+---
+
+## macOS Desktop Packaging Notes
+
+- Built app bundle:
+  - `src-tauri/target/release/bundle/macos/Daily Findings.app`
+- Built installer:
+  - `src-tauri/target/release/bundle/dmg/Daily Findings_0.1.0_aarch64.dmg`
+
+The current artifact is Apple Silicon (`aarch64`) unless an x64 build pipeline is added.
+
+If Finder/Dock icon appears stale after rebuild, quit/reopen app; macOS icon cache may lag.
+
+---
+
+## Troubleshooting
+
+### App looks like an older build
+
+- Kill stale app/sidecar processes and relaunch from `/Applications`.
+- Ensure port `1430` is not served by an older process.
+- Rebuild with a clean Next output if needed:
+
+```bash
+rm -rf .next
+npm run tauri:build:clean
+```
+
+### Shared build opens with old progress
+
+- Use `npm run tauri:build:clean` (not `tauri:build`) before sharing.
+
+### Desktop build succeeds but DMG step fails
+
+- `.app` can still be installed directly from the macOS bundle path.
+- Re-run build if you need fresh `.dmg`.
+
+---
+
+## Git Operations (Repository Onboarding)
+
+Target remote:
+
+- `https://github.com/docker-grc/arc-learning-platform.git`
+
+This local repo is configured to use that remote as `origin`.
+
+Useful commands:
+
+```bash
+git remote -v
+git fetch origin
+git status
+```
+
+When ready to publish:
+
+```bash
+git add .
+git commit -m "..."
+git push -u origin main
+```
+
+---
+
+## Security & Privacy
+
+- Do not commit API keys or local secret files.
+- Review `.env` handling before first push.
+- Validate clean-share artifacts before external distribution.
+
+---
+
+## Roadmap Snapshot
+
+Planned but not fully implemented in this repo yet:
+
+- competency-driven expansion to 12 domains / 174 modules
+- capstone modules per domain
+- module type tagging (`core`, `depth`, `specialization`, `capstone`)
+- prerequisite graphing and bridge track logic
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

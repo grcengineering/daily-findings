@@ -1,14 +1,8 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
+.yarn/install-state.gz
 
 # testing
 /coverage
@@ -30,8 +24,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env*.local
+.env
 
 # vercel
 .vercel
@@ -39,3 +34,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma
+prisma/dev.db
+prisma/dev.db-journal
+dev.db
+dev.db-journal
+
+/src/generated/prisma
+
+# local/build caches
+.cache/
+
+# tauri generated artifacts
+src-tauri/target/
+src-tauri/resources/next-standalone/
+src-tauri/resources/node-runtime/

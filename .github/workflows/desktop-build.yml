@@ -1,0 +1,54 @@
+name: Desktop Build (macOS + Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-desktop:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            bundles: "app,dmg"
+            artifact_name: "daily-findings-macos"
+            artifact_paths: |
+              src-tauri/target/release/bundle/macos/*
+              src-tauri/target/release/bundle/dmg/*
+          - os: windows-latest
+            bundles: "nsis,msi"
+            artifact_name: "daily-findings-windows"
+            artifact_paths: |
+              src-tauri/target/release/bundle/nsis/*
+              src-tauri/target/release/bundle/msi/*
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build desktop bundles
+        run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_paths }}
+          if-no-files-found: error

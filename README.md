@@ -171,6 +171,24 @@ If Finder/Dock icon appears stale after rebuild, quit/reopen app; macOS icon cac
 
 ---
 
+## Windows Distribution
+
+This project can now build Windows desktop installers in GitHub Actions.
+
+- Workflow: `.github/workflows/desktop-build.yml`
+- Trigger:
+  - manually via **Actions -> Desktop Build (macOS + Windows) -> Run workflow**
+  - automatically on tags like `v0.1.1`
+- Windows outputs are uploaded as artifacts:
+  - `daily-findings-windows` (contains `nsis` and `msi` bundles)
+
+Notes:
+
+- Building Windows bundles from macOS locally is not supported in this setup.
+- Use the workflow to generate shareable Windows installers reliably.
+
+---
+
 ## Troubleshooting
 
 ### App looks like an older build

@@ -15,9 +15,9 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:prepare": "npm run build && node scripts/prepare-tauri-sidecar.mjs",
-    "tauri:prepare:clean": "TAURI_CLEAN_SHARE_BUILD=1 npm run build && node scripts/prepare-tauri-sidecar.mjs",
-    "tauri:build": "CI=true tauri build",
-    "tauri:build:clean": "TAURI_CLEAN_SHARE_BUILD=1 CI=true tauri build"
+    "tauri:prepare:clean": "cross-env TAURI_CLEAN_SHARE_BUILD=1 npm run build && node scripts/prepare-tauri-sidecar.mjs",
+    "tauri:build": "cross-env CI=true tauri build",
+    "tauri:build:clean": "cross-env TAURI_CLEAN_SHARE_BUILD=1 CI=true tauri build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -47,6 +47,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "playwright": "^1.58.2",

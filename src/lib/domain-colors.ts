@@ -4,8 +4,12 @@ export const DOMAINS = [
   "Compliance & Regulatory",
   "Audit & Assurance",
   "Policy & Governance",
-  "Incident Response & BCM",
+  "Incident Response & Resilience",
   "Third-Party Risk",
+  "Security Controls & Architecture",
+  "Data Governance & Information Mgmt",
+  "GRC Engineering & Automation",
+  "AI Governance & Emerging Tech Risk",
   "Privacy",
 ] as const;
 
@@ -50,12 +54,40 @@ export const DOMAIN_CONFIG: Record<
     icon: "FileText",
     slug: "policy",
   },
-  "Incident Response & BCM": {
+  "Incident Response & Resilience": {
     color: "#ef4444",
     gradient: "from-red-500 to-rose-700",
     bg: "bg-red-500/10",
     icon: "Siren",
     slug: "incident",
+  },
+  "Security Controls & Architecture": {
+    color: "#14b8a6",
+    gradient: "from-teal-500 to-cyan-600",
+    bg: "bg-teal-500/10",
+    icon: "ShieldCheck",
+    slug: "controls",
+  },
+  "Data Governance & Information Mgmt": {
+    color: "#0ea5e9",
+    gradient: "from-sky-500 to-blue-600",
+    bg: "bg-sky-500/10",
+    icon: "Database",
+    slug: "data-gov",
+  },
+  "GRC Engineering & Automation": {
+    color: "#7c3aed",
+    gradient: "from-violet-500 to-indigo-700",
+    bg: "bg-violet-500/10",
+    icon: "Code",
+    slug: "grc-engineering",
+  },
+  "AI Governance & Emerging Tech Risk": {
+    color: "#f97316",
+    gradient: "from-orange-500 to-amber-600",
+    bg: "bg-orange-500/10",
+    icon: "Bot",
+    slug: "ai-governance",
   },
   "Third-Party Risk": {
     color: "#06b6d4",

@@ -227,6 +227,26 @@ git push -u origin main
 - Review `.env` handling before first push.
 - Validate clean-share artifacts before external distribution.
 
+### Local Pre-Commit Secret Scan
+
+A local pre-commit hook is configured to run:
+
+```bash
+node scripts/check-secrets.mjs --staged
+```
+
+Behavior:
+
+- scans staged files for common token/key patterns
+- blocks commits when possible secrets are detected
+- prints a short masked sample so you can identify and remove the leak quickly
+
+If you need to test it manually:
+
+```bash
+node scripts/check-secrets.mjs --staged
+```
+
 ---
 
 ## Roadmap Snapshot

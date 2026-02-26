@@ -5,20 +5,20 @@ import { cn } from "@/lib/utils";
 import { popIn } from "@/lib/animations";
 import { CheckIcon } from "lucide-react";
 
-const SECTION_NAMES = ["Lesson", "Scenario", "Quiz"];
-
 interface SessionProgressProps {
   currentSection: number;
   completedSections: number[];
+  sectionNames: string[];
   onSectionClick: (idx: number) => void;
 }
 
 export function SessionProgress({
   currentSection,
   completedSections,
+  sectionNames,
   onSectionClick,
 }: SessionProgressProps) {
-  const progressPercent = (completedSections.length / SECTION_NAMES.length) * 100;
+  const progressPercent = (completedSections.length / sectionNames.length) * 100;
 
   return (
     <div className="w-full">
@@ -32,7 +32,7 @@ export function SessionProgress({
       </div>
 
       <div className="flex items-center justify-center gap-2 sm:gap-3 py-4 px-4">
-        {SECTION_NAMES.map((name, idx) => {
+        {sectionNames.map((name, idx) => {
           const isCompleted = completedSections.includes(idx);
           const isCurrent = idx === currentSection;
           const isClickable = isCompleted || isCurrent;

@@ -1,0 +1,30 @@
+{
+  "domain_id": "DOMAIN_POLICY",
+  "name": "Policy & Governance",
+  "slug": "policy",
+  "description": "Policy authoring, governance structures, and executive communication.",
+  "color": "#3b82f6",
+  "gradient": "from-blue-500 to-blue-700",
+  "icon": "FileText",
+  "competencies": [
+    { "competency_id": "POLICY_FOUND", "title": "Policy and governance foundations", "tier": "foundational", "domain_id": "DOMAIN_POLICY" },
+    { "competency_id": "POLICY_EXEC", "title": "Policy operations and mapping", "tier": "intermediate", "domain_id": "DOMAIN_POLICY" },
+    { "competency_id": "POLICY_LEAD", "title": "Governance architecture and maturity", "tier": "advanced", "domain_id": "DOMAIN_POLICY" }
+  ],
+  "modules": [
+    { "id": "POLICY_F01", "title": "Information Security Policy Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["POLICY_FOUND"], "prerequisites": [] },
+    { "id": "POLICY_F02", "title": "Policy Lifecycle Management", "tier": "foundational", "module_type": "core", "competency_ids": ["POLICY_FOUND"], "prerequisites": [{ "module_id": "POLICY_F01" }] },
+    { "id": "POLICY_F03", "title": "Standards, Procedures & Guidelines", "tier": "foundational", "module_type": "core", "competency_ids": ["POLICY_FOUND"], "prerequisites": [{ "module_id": "POLICY_F01" }] },
+    { "id": "POLICY_F04", "title": "Governance Structures & Committees", "tier": "foundational", "module_type": "core", "competency_ids": ["POLICY_FOUND"], "prerequisites": [] },
+    { "id": "POLICY_I01", "title": "Writing Effective Security Policies", "tier": "intermediate", "module_type": "core", "competency_ids": ["POLICY_EXEC"], "prerequisites": [{ "module_id": "POLICY_F02" }] },
+    { "id": "POLICY_I02", "title": "Policy Exception Management", "tier": "intermediate", "module_type": "core", "competency_ids": ["POLICY_EXEC"], "prerequisites": [{ "module_id": "POLICY_I01" }] },
+    { "id": "POLICY_I03", "title": "Board-Level Governance Reporting", "tier": "intermediate", "module_type": "core", "competency_ids": ["POLICY_EXEC"], "prerequisites": [{ "module_id": "POLICY_F04" }] },
+    { "id": "POLICY_I04", "title": "Policy-to-Controls Mapping", "tier": "intermediate", "module_type": "core", "competency_ids": ["POLICY_EXEC"], "prerequisites": [{ "module_id": "POLICY_I01" }, { "module_id": "FRMWK_I01" }] },
+    { "id": "POLICY_I05", "title": "Policy Metrics & Effectiveness", "tier": "intermediate", "module_type": "depth", "competency_ids": ["POLICY_EXEC"], "prerequisites": [{ "module_id": "POLICY_I04" }] },
+    { "id": "POLICY_I06", "title": "Executive Communication & Stakeholder Influence", "tier": "intermediate", "module_type": "depth", "competency_ids": ["POLICY_EXEC"], "prerequisites": [{ "module_id": "POLICY_I03" }] },
+    { "id": "POLICY_A01", "title": "Enterprise Governance Architecture", "tier": "advanced", "module_type": "core", "competency_ids": ["POLICY_LEAD"], "prerequisites": [{ "module_id": "POLICY_I04" }] },
+    { "id": "POLICY_A02", "title": "Policy-as-Code", "tier": "advanced", "module_type": "specialization", "competency_ids": ["POLICY_LEAD"], "prerequisites": [{ "module_id": "POLICY_I04" }] },
+    { "id": "POLICY_A03", "title": "Governance Program Maturity", "tier": "advanced", "module_type": "core", "competency_ids": ["POLICY_LEAD"], "prerequisites": [{ "module_id": "POLICY_A01" }] },
+    { "id": "POLICY_CAP", "title": "Capstone: Executive Board Summary & KPI Framework", "tier": "advanced", "module_type": "capstone", "competency_ids": ["POLICY_LEAD"], "prerequisites": [{ "module_id": "POLICY_A01" }] }
+  ]
+}

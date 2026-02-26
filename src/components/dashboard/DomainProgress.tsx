@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { staggerContainer, fadeInUp } from "@/lib/animations";
-import { DOMAINS, DOMAIN_CONFIG, type Domain } from "@/lib/domain-colors";
+import { DOMAINS, DOMAIN_CONFIG } from "@/lib/domain-colors";
 import {
   Tooltip,
   TooltipTrigger,

@@ -13,6 +13,7 @@ import {
   SourcesFooter,
 } from "./VerificationIndicator";
 import { RichText } from "./RichText";
+import { CodeChallengeQuestion, type CodeChallengeItem } from "./CodeChallengeQuestion";
 
 interface Citation {
   url: string;
@@ -29,14 +30,17 @@ interface FlaggedClaim {
 
 interface QuizQuestion {
   id: string;
+  format?: "multiple_choice";
   question: string;
   options: string[];
   correctIndex: number;
   explanation: string;
 }
 
+type AssessmentItem = QuizQuestion | CodeChallengeItem;
+
 interface QuizContent {
-  questions: QuizQuestion[];
+  questions: AssessmentItem[];
   citations?: Citation[];
   confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
@@ -48,7 +52,7 @@ interface QuizViewProps {
 }
 
 type AnswerRecord = {
-  selectedIndex: number;
+  selectedIndex: number | null;
   correct: boolean;
 };
 
@@ -64,15 +68,6 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
   const current = questions[currentIdx];
   const score = Array.from(answers.values()).filter((a) => a.correct).length;
 
-  if (total === 0) {
-    return (
-      <div className="max-w-[700px] mx-auto py-8 px-4 text-center">
-        <p className="text-muted-foreground mb-4">No quiz questions available for this session.</p>
-        <Button onClick={() => onComplete(0, 0)}>Skip Quiz</Button>
-      </div>
-    );
-  }
-
   const fireConfetti = useCallback(() => {
     confetti({
       particleCount: 80,
@@ -82,7 +77,17 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
     });
   }, []);
 
+  if (total === 0) {
+    return (
+      <div className="max-w-[700px] mx-auto py-8 px-4 text-center">
+        <p className="text-muted-foreground mb-4">No quiz questions available for this session.</p>
+        <Button onClick={() => onComplete(0, 0)}>Skip Quiz</Button>
+      </div>
+    );
+  }
+
   const handleSelect = (optionIdx: number) => {
+    if (current.format === "code_challenge") return;
     if (answered) return;
 
     setSelectedOption(optionIdx);
@@ -106,6 +111,15 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
     } else {
       setShowResults(true);
     }
+  };
+
+  const handleCodeChallengeComplete = (passed: boolean) => {
+    setAnswered(true);
+    setAnswers((prev) => {
+      const next = new Map(prev);
+      next.set(currentIdx, { selectedIndex: null, correct: passed });
+      return next;
+    });
   };
 
   const handleFinish = () => {
@@ -148,11 +162,13 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
                   ) : (
                     <XIcon className="size-5 text-red-500 mt-0.5 shrink-0" />
                   )}
-                  <p className="font-medium text-sm">{q.question}</p>
+                  <p className="font-medium text-sm">
+                    {"question" in q ? q.question : q.expected_artifact}
+                  </p>
                 </div>
-                {!answer?.correct && (
+                {!answer?.correct && q.format !== "code_challenge" && (
                   <p className="text-xs text-muted-foreground ml-7 mb-1">
-                    Correct answer: {q.options[q.correctIndex]}
+                    Correct answer: {"options" in q ? q.options[q.correctIndex] : ""}
                   </p>
                 )}
                 <div className="ml-7">
@@ -198,62 +214,67 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
           animate="visible"
           exit={{ opacity: 0, x: -30 }}
         >
-          <h2 className="text-xl font-semibold mb-6">{current.question}</h2>
+          {"format" in current && current.format === "code_challenge" ? (
+            <CodeChallengeQuestion item={current} onComplete={handleCodeChallengeComplete} />
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold mb-6">{current.question}</h2>
+              <div className="space-y-3 mb-6">
+                {current.options.map((option, optIdx) => {
+                  const isSelected = selectedOption === optIdx;
+                  const isCorrect = optIdx === current.correctIndex;
+                  const showCorrect = answered && isCorrect;
+                  const showIncorrect = answered && isSelected && !isCorrect;
 
-          <div className="space-y-3 mb-6">
-            {current.options.map((option, optIdx) => {
-              const isSelected = selectedOption === optIdx;
-              const isCorrect = optIdx === current.correctIndex;
-              const showCorrect = answered && isCorrect;
-              const showIncorrect = answered && isSelected && !isCorrect;
-
-              return (
-                <motion.div
-                  key={optIdx}
-                  variants={showIncorrect ? shake : undefined}
-                  initial={showIncorrect ? "idle" : undefined}
-                  animate={showIncorrect ? "shake" : undefined}
-                  whileHover={!answered ? { scale: 1.01 } : undefined}
-                  whileTap={!answered ? { scale: 0.99 } : undefined}
-                >
-                  <button
-                    disabled={answered}
-                    onClick={() => handleSelect(optIdx)}
-                    className={cn(
-                      "w-full text-left rounded-xl p-4 border-2 transition-colors",
-                      !answered &&
-                        "border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer",
-                      answered && !showCorrect && !showIncorrect && "border-border opacity-50",
-                      showCorrect && "border-emerald-500 bg-emerald-500/10",
-                      showIncorrect && "border-red-500 bg-red-500/10"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
+                  return (
+                    <motion.div
+                      key={optIdx}
+                      variants={showIncorrect ? shake : undefined}
+                      initial={showIncorrect ? "idle" : undefined}
+                      animate={showIncorrect ? "shake" : undefined}
+                      whileHover={!answered ? { scale: 1.01 } : undefined}
+                      whileTap={!answered ? { scale: 0.99 } : undefined}
+                    >
+                      <button
+                        disabled={answered}
+                        onClick={() => handleSelect(optIdx)}
                         className={cn(
-                          "flex items-center justify-center size-7 rounded-full text-xs font-semibold shrink-0 border",
-                          showCorrect && "bg-emerald-500 text-white border-emerald-500",
-                          showIncorrect && "bg-red-500 text-white border-red-500",
-                          !showCorrect && !showIncorrect && "border-border"
+                          "w-full text-left rounded-xl p-4 border-2 transition-colors",
+                          !answered &&
+                            "border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer",
+                          answered && !showCorrect && !showIncorrect && "border-border opacity-50",
+                          showCorrect && "border-emerald-500 bg-emerald-500/10",
+                          showIncorrect && "border-red-500 bg-red-500/10"
                         )}
                       >
-                        {showCorrect ? (
-                          <motion.span variants={popIn} initial="hidden" animate="visible">
-                            <CheckIcon className="size-4" />
-                          </motion.span>
-                        ) : showIncorrect ? (
-                          <XIcon className="size-4" />
-                        ) : (
-                          String.fromCharCode(65 + optIdx)
-                        )}
-                      </span>
-                      <span className="text-sm font-medium">{option}</span>
-                    </div>
-                  </button>
-                </motion.div>
-              );
-            })}
-          </div>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              "flex items-center justify-center size-7 rounded-full text-xs font-semibold shrink-0 border",
+                              showCorrect && "bg-emerald-500 text-white border-emerald-500",
+                              showIncorrect && "bg-red-500 text-white border-red-500",
+                              !showCorrect && !showIncorrect && "border-border"
+                            )}
+                          >
+                            {showCorrect ? (
+                              <motion.span variants={popIn} initial="hidden" animate="visible">
+                                <CheckIcon className="size-4" />
+                              </motion.span>
+                            ) : showIncorrect ? (
+                              <XIcon className="size-4" />
+                            ) : (
+                              String.fromCharCode(65 + optIdx)
+                            )}
+                          </span>
+                          <span className="text-sm font-medium">{option}</span>
+                        </div>
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {answered && (
             <motion.div

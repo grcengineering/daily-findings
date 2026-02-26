@@ -26,6 +26,9 @@ interface TopicInfo {
   promptHints: string;
   domain: string;
   level: string;
+  moduleType: "core" | "depth" | "specialization" | "capstone";
+  competencyIds: string[];
+  prerequisites: string[];
 }
 
 interface TopicInput {
@@ -50,6 +53,7 @@ let getAllTopics: () => TopicInfo[];
 let generateLesson: GenerateFn;
 let generateScenario: GenerateFn;
 let generateQuiz: GenerateFn;
+let generateCapstone: ((input: TopicInput, domain: string, level: string) => Promise<unknown>) | undefined;
 
 async function loadModules() {
   const curriculum = await import("../src/lib/curriculum");
@@ -58,6 +62,7 @@ async function loadModules() {
   generateLesson = ai.generateLesson;
   generateScenario = ai.generateScenario;
   generateQuiz = ai.generateQuiz;
+  generateCapstone = ai.generateCapstone;
 }
 
 async function processTopic(
@@ -88,10 +93,13 @@ async function processTopic(
       level: topic.level,
     };
 
-    const [lesson, scenario, quiz] = await Promise.all([
+    const [lesson, scenario, quiz, capstone] = await Promise.all([
       generateLesson(input, topic.domain, topic.level),
       generateScenario(input, topic.domain, topic.level),
       generateQuiz(input, topic.domain, topic.level),
+      topic.moduleType === "capstone" && generateCapstone
+        ? generateCapstone(input, topic.domain, topic.level)
+        : Promise.resolve(null),
     ]);
 
     const scores = [
@@ -109,9 +117,13 @@ async function processTopic(
           domain: topic.domain,
           topic: topic.title,
           level: topic.level,
+          moduleType: topic.moduleType,
+          competencyIds: JSON.stringify(topic.competencyIds),
+          prerequisites: JSON.stringify(topic.prerequisites),
           lessonContent: JSON.stringify(lesson),
           scenarioContent: JSON.stringify(scenario),
           quizContent: JSON.stringify(quiz),
+          capstoneContent: capstone ? JSON.stringify(capstone) : null,
           confidenceScore: aggregateConfidence,
         },
       });

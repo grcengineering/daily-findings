@@ -1,0 +1,29 @@
+{
+  "domain_id": "DOMAIN_DATA_GOV",
+  "name": "Data Governance & Information Mgmt",
+  "slug": "data-gov",
+  "description": "Data governance, lifecycle, retention, lineage, and strategy.",
+  "color": "#0ea5e9",
+  "gradient": "from-sky-500 to-blue-600",
+  "icon": "Database",
+  "competencies": [
+    { "competency_id": "DATGOV_FOUND", "title": "Data governance fundamentals", "tier": "foundational", "domain_id": "DOMAIN_DATA_GOV" },
+    { "competency_id": "DATGOV_EXEC", "title": "Data governance operations", "tier": "intermediate", "domain_id": "DOMAIN_DATA_GOV" },
+    { "competency_id": "DATGOV_LEAD", "title": "Enterprise data strategy", "tier": "advanced", "domain_id": "DOMAIN_DATA_GOV" }
+  ],
+  "modules": [
+    { "id": "DATGOV_F01", "title": "Data Governance Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["DATGOV_FOUND"], "prerequisites": [] },
+    { "id": "DATGOV_F02", "title": "Data Classification & Handling", "tier": "foundational", "module_type": "core", "competency_ids": ["DATGOV_FOUND"], "prerequisites": [{ "module_id": "DATGOV_F01" }] },
+    { "id": "DATGOV_F03", "title": "Data Lifecycle Management", "tier": "foundational", "module_type": "core", "competency_ids": ["DATGOV_FOUND"], "prerequisites": [{ "module_id": "DATGOV_F01" }] },
+    { "id": "DATGOV_F04", "title": "Data Quality Principles", "tier": "foundational", "module_type": "core", "competency_ids": ["DATGOV_FOUND"], "prerequisites": [{ "module_id": "DATGOV_F01" }] },
+    { "id": "DATGOV_I01", "title": "Building a Data Governance Program", "tier": "intermediate", "module_type": "core", "competency_ids": ["DATGOV_EXEC"], "prerequisites": [{ "module_id": "DATGOV_F02" }] },
+    { "id": "DATGOV_I02", "title": "Data Retention & Disposal Policies", "tier": "intermediate", "module_type": "core", "competency_ids": ["DATGOV_EXEC"], "prerequisites": [{ "module_id": "DATGOV_F03" }] },
+    { "id": "DATGOV_I03", "title": "Data Lineage & Impact Analysis", "tier": "intermediate", "module_type": "core", "competency_ids": ["DATGOV_EXEC"], "prerequisites": [{ "module_id": "DATGOV_I01" }] },
+    { "id": "DATGOV_I04", "title": "Data Governance Tools & Technologies", "tier": "intermediate", "module_type": "depth", "competency_ids": ["DATGOV_EXEC"], "prerequisites": [{ "module_id": "DATGOV_I01" }] },
+    { "id": "DATGOV_A01", "title": "Enterprise Data Strategy", "tier": "advanced", "module_type": "core", "competency_ids": ["DATGOV_LEAD"], "prerequisites": [{ "module_id": "DATGOV_I03" }] },
+    { "id": "DATGOV_A02", "title": "Data Ethics & Responsible Data Use", "tier": "advanced", "module_type": "core", "competency_ids": ["DATGOV_LEAD"], "prerequisites": [{ "module_id": "DATGOV_A01" }] },
+    { "id": "DATGOV_A03", "title": "Cross-Border Data Management", "tier": "advanced", "module_type": "depth", "competency_ids": ["DATGOV_LEAD"], "prerequisites": [{ "module_id": "DATGOV_A01" }] },
+    { "id": "DATGOV_A04", "title": "Data Governance for AI & Analytics", "tier": "advanced", "module_type": "depth", "competency_ids": ["DATGOV_LEAD"], "prerequisites": [{ "module_id": "DATGOV_A01" }] },
+    { "id": "DATGOV_CAP", "title": "Capstone: Data Classification Model & Retention Blueprint", "tier": "advanced", "module_type": "capstone", "competency_ids": ["DATGOV_LEAD"], "prerequisites": [{ "module_id": "DATGOV_A01" }] }
+  ]
+}

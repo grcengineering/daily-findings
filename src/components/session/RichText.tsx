@@ -1,10 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoIcon, PauseIcon, PlayIcon, SquareIcon, Volume2Icon } from "lucide-react";
+import { CodeBlock } from "./CodeBlock";
 
 interface RichTextProps {
   text: string;
   className?: string;
+  showReadAloud?: boolean;
 }
 
 function normalizeRichTextInput(text: string): string {
@@ -19,6 +24,20 @@ function normalizeRichTextInput(text: string): string {
         .trimEnd()
     )
     .join("\n");
+}
+
+function buildSpeechText(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^[-*•]\s+/gm, "")
+    .replace(/^\d+[.)]\s+/gm, "")
+    .replace(/\n{2,}/g, ". ")
+    .replace(/\n/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 type InlineSegment =
@@ -89,7 +108,8 @@ function renderInline(segments: InlineSegment[]): React.ReactNode[] {
 type Block =
   | { type: "paragraph"; content: string }
   | { type: "bullet-list"; items: string[] }
-  | { type: "numbered-list"; items: string[] };
+  | { type: "numbered-list"; items: string[] }
+  | { type: "code"; code: string; language?: string };
 
 function splitLongParagraph(content: string): string[] {
   const normalized = content.trim().replace(/\s+/g, " ");
@@ -162,8 +182,28 @@ function parseBlocks(text: string): Block[] {
     }
   };
 
-  for (const line of lines) {
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
     const trimmed = line.trim();
+
+    const fenceMatch = trimmed.match(/^```([a-zA-Z0-9_-]+)?\s*$/);
+    if (fenceMatch) {
+      flushList();
+      flushParagraph();
+      const language = fenceMatch[1] || "text";
+      const codeLines: string[] = [];
+      // consume lines until next fence
+      for (let i = idx + 1; i < lines.length; i++) {
+        if (lines[i].trim() === "```") {
+          idx = i;
+          break;
+        }
+        codeLines.push(lines[i]);
+        idx = i;
+      }
+      blocks.push({ type: "code", code: codeLines.join("\n"), language });
+      continue;
+    }
 
     const bulletMatch = trimmed.match(/^[-•*]\s+(.+)/);
     if (bulletMatch) {
@@ -202,11 +242,194 @@ function parseBlocks(text: string): Block[] {
   return blocks;
 }
 
-export function RichText({ text, className }: RichTextProps) {
-  const blocks = parseBlocks(normalizeRichTextInput(text));
+export function RichText({ text, className, showReadAloud = true }: RichTextProps) {
+  const normalizedText = useMemo(() => normalizeRichTextInput(text), [text]);
+  const blocks = useMemo(() => parseBlocks(normalizedText), [normalizedText]);
+  const speechText = useMemo(() => buildSpeechText(normalizedText), [normalizedText]);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceUri, setSelectedVoiceUri] = useState<string>("");
+  const [speechRate, setSpeechRate] = useState<number>(1);
+
+  const canReadAloud =
+    showReadAloud &&
+    speechText.length >= 220 &&
+    typeof window !== "undefined" &&
+    "speechSynthesis" in window &&
+    typeof window.SpeechSynthesisUtterance !== "undefined";
+  const selectedVoice =
+    voices.find((voice) => voice.voiceURI === selectedVoiceUri) ?? null;
+
+  function loadVoices() {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const available = window.speechSynthesis.getVoices();
+    setVoices(available);
+    if (available.length === 0) return;
+
+    const preferredFromStorage =
+      window.localStorage.getItem("dailyfindings_tts_voice_uri") ?? "";
+    const preferredRate = Number(window.localStorage.getItem("dailyfindings_tts_rate") ?? "1");
+    if (!Number.isNaN(preferredRate) && preferredRate >= 0.8 && preferredRate <= 1.3) {
+      setSpeechRate(preferredRate);
+    }
+
+    if (preferredFromStorage) {
+      const found = available.find((voice) => voice.voiceURI === preferredFromStorage);
+      if (found) {
+        setSelectedVoiceUri(found.voiceURI);
+        return;
+      }
+    }
+
+    const englishVoices = available.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+    const enhancedEnglish =
+      englishVoices.find((voice) =>
+        /(enhanced|premium|samantha|alex|allison|ava|nicky)/i.test(
+          `${voice.name} ${voice.voiceURI}`
+        )
+      ) ?? englishVoices[0];
+    setSelectedVoiceUri((enhancedEnglish ?? available[0]).voiceURI);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const timerId = window.setTimeout(loadVoices, 0);
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => {
+      window.clearTimeout(timerId);
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  function startReading() {
+    if (!canReadAloud) return;
+    window.speechSynthesis.cancel();
+
+    const utterance = new window.SpeechSynthesisUtterance(speechText);
+    utterance.rate = speechRate;
+    utterance.pitch = 1;
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      utterance.lang = selectedVoice.lang;
+    }
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+    setIsPaused(false);
+  }
+
+  function togglePause() {
+    if (!canReadAloud || !isSpeaking) return;
+    if (isPaused) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+      return;
+    }
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  }
+
+  function stopReading() {
+    if (!canReadAloud) return;
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
+    setIsSpeaking(false);
+    setIsPaused(false);
+  }
 
   return (
     <div className={className}>
+      {canReadAloud && (
+        <TooltipProvider>
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
+            {voices.length > 0 && (
+              <select
+                aria-label="Text-to-speech voice"
+                value={selectedVoiceUri}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSelectedVoiceUri(next);
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem("dailyfindings_tts_voice_uri", next);
+                  }
+                }}
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
+              >
+                {voices
+                  .filter((voice) => voice.lang.toLowerCase().startsWith("en"))
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((voice) => (
+                    <option key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name} ({voice.lang})
+                    </option>
+                  ))}
+              </select>
+            )}
+
+            <select
+              aria-label="Text-to-speech speed"
+              value={String(speechRate)}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setSpeechRate(next);
+                if (typeof window !== "undefined") {
+                  window.localStorage.setItem("dailyfindings_tts_rate", String(next));
+                }
+              }}
+              className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              <option value="0.9">Speed: 0.9x</option>
+              <option value="1">Speed: 1.0x</option>
+              <option value="1.1">Speed: 1.1x</option>
+            </select>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" variant="ghost" aria-label="Voice setup help">
+                  <InfoIcon className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[320px] leading-relaxed">
+                For better voices on macOS: open System Settings, then Accessibility, then Spoken
+                Content, then System Voice, then Manage Voices. Install Enhanced or Premium voices,
+                then restart the app.
+                Siri personal voices may not be available to browser speech APIs.
+              </TooltipContent>
+            </Tooltip>
+
+          {!isSpeaking ? (
+            <Button size="sm" variant="outline" onClick={startReading} className="gap-1.5">
+              <Volume2Icon className="size-3.5" />
+              Read aloud
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" onClick={togglePause} className="gap-1.5">
+                {isPaused ? <PlayIcon className="size-3.5" /> : <PauseIcon className="size-3.5" />}
+                {isPaused ? "Resume" : "Pause"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={stopReading} className="gap-1.5">
+                <SquareIcon className="size-3.5" />
+                Stop
+              </Button>
+            </>
+          )}
+          </div>
+        </TooltipProvider>
+      )}
       {blocks.map((block, i) => {
         switch (block.type) {
           case "paragraph":
@@ -244,6 +467,8 @@ export function RichText({ text, className }: RichTextProps) {
                 ))}
               </ol>
             );
+          case "code":
+            return <CodeBlock key={i} code={block.code} language={block.language} />;
         }
       })}
     </div>

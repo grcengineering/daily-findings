@@ -1,20 +1,11 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) {
-    return <div className="h-8 w-8" />;
-  }
-
-  const isDark = theme === "dark";
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const isDark = (resolvedTheme ?? theme) === "dark";
 
   return (
     <button

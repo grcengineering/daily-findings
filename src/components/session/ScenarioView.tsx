@@ -11,6 +11,7 @@ import {
   MessageSquareIcon,
   ChevronDownIcon,
   CheckCircleIcon,
+  ExpandIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -67,6 +68,7 @@ export function ScenarioView({ scenario, domainColor, onComplete }: ScenarioView
   const [stepIdx, setStepIdx] = useState(0);
   const [direction, setDirection] = useState(1);
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set());
+  const [enlarged, setEnlarged] = useState(false);
 
   const current = steps[stepIdx];
 
@@ -120,10 +122,15 @@ export function ScenarioView({ scenario, domainColor, onComplete }: ScenarioView
   })();
 
   return (
-    <div className="max-w-[700px] mx-auto py-8 px-4 flex flex-col min-h-[calc(100vh-160px)]">
+    <div
+      className={cn(
+        "mx-auto py-8 px-4 flex flex-col min-h-[calc(100vh-160px)] transition-[max-width]",
+        enlarged ? "max-w-[980px]" : "max-w-[700px]"
+      )}
+    >
       {/* Top bar */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
           <Badge variant="secondary" className="gap-1.5">
             <GlobeIcon className="size-3" />
             Real-World Context
@@ -131,6 +138,16 @@ export function ScenarioView({ scenario, domainColor, onComplete }: ScenarioView
           <Badge variant="outline">
             {stepIdx + 1} / {totalSteps}
           </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEnlarged((value) => !value)}
+            className="gap-1 ml-auto"
+            aria-label="Enlarge scenario content"
+          >
+            <ExpandIcon className="size-3.5" />
+            {enlarged ? "Normal size" : "Enlarge"}
+          </Button>
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{scenario.title}</h1>
 

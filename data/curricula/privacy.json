@@ -1,0 +1,32 @@
+{
+  "domain_id": "DOMAIN_PRIVACY",
+  "name": "Privacy",
+  "slug": "privacy",
+  "description": "Privacy strategy, regulation, engineering, and program leadership.",
+  "color": "#ec4899",
+  "gradient": "from-pink-500 to-rose-600",
+  "icon": "Lock",
+  "competencies": [
+    { "competency_id": "PRIVACY_FOUND", "title": "Privacy foundations and legal bases", "tier": "foundational", "domain_id": "DOMAIN_PRIVACY" },
+    { "competency_id": "PRIVACY_EXEC", "title": "Privacy operations and rights handling", "tier": "intermediate", "domain_id": "DOMAIN_PRIVACY" },
+    { "competency_id": "PRIVACY_LEAD", "title": "Privacy program leadership and advanced topics", "tier": "advanced", "domain_id": "DOMAIN_PRIVACY" }
+  ],
+  "modules": [
+    { "id": "PRIVACY_F01", "title": "Privacy Fundamentals & Key Principles", "tier": "foundational", "module_type": "core", "competency_ids": ["PRIVACY_FOUND"], "prerequisites": [] },
+    { "id": "PRIVACY_F02", "title": "Global Privacy Regulatory Landscape", "tier": "foundational", "module_type": "core", "competency_ids": ["PRIVACY_FOUND"], "prerequisites": [{ "module_id": "PRIVACY_F01" }] },
+    { "id": "PRIVACY_F03", "title": "Data Classification & Personal Data Taxonomy", "tier": "foundational", "module_type": "core", "competency_ids": ["PRIVACY_FOUND"], "prerequisites": [{ "module_id": "PRIVACY_F01" }] },
+    { "id": "PRIVACY_F04", "title": "Privacy Impact Assessments (PIAs/DPIAs)", "tier": "foundational", "module_type": "core", "competency_ids": ["PRIVACY_FOUND"], "prerequisites": [{ "module_id": "PRIVACY_F03" }] },
+    { "id": "PRIVACY_F05", "title": "Consent Management & Legal Bases", "tier": "foundational", "module_type": "core", "competency_ids": ["PRIVACY_FOUND"], "prerequisites": [{ "module_id": "PRIVACY_F02" }] },
+    { "id": "PRIVACY_I01", "title": "GDPR Deep Dive", "tier": "intermediate", "module_type": "core", "competency_ids": ["PRIVACY_EXEC"], "prerequisites": [{ "module_id": "PRIVACY_F02" }, { "module_id": "PRIVACY_F05" }] },
+    { "id": "PRIVACY_I02", "title": "US State Privacy Laws", "tier": "intermediate", "module_type": "core", "competency_ids": ["PRIVACY_EXEC"], "prerequisites": [{ "module_id": "PRIVACY_F02" }] },
+    { "id": "PRIVACY_I03", "title": "Privacy Engineering Practices", "tier": "intermediate", "module_type": "depth", "competency_ids": ["PRIVACY_EXEC"], "prerequisites": [{ "module_id": "PRIVACY_F04" }] },
+    { "id": "PRIVACY_I04", "title": "Data Subject Rights Management", "tier": "intermediate", "module_type": "core", "competency_ids": ["PRIVACY_EXEC"], "prerequisites": [{ "module_id": "PRIVACY_I01" }] },
+    { "id": "PRIVACY_I05", "title": "Vendor Privacy & Data Processing Agreements", "tier": "intermediate", "module_type": "core", "competency_ids": ["PRIVACY_EXEC"], "prerequisites": [{ "module_id": "PRIVACY_I01" }, { "module_id": "TPRM_F02" }] },
+    { "id": "PRIVACY_A01", "title": "Privacy Program Governance", "tier": "advanced", "module_type": "core", "competency_ids": ["PRIVACY_LEAD"], "prerequisites": [{ "module_id": "PRIVACY_I01" }, { "module_id": "PRIVACY_I04" }] },
+    { "id": "PRIVACY_A02", "title": "Cross-Border Data Transfer Mechanisms", "tier": "advanced", "module_type": "core", "competency_ids": ["PRIVACY_LEAD"], "prerequisites": [{ "module_id": "PRIVACY_I01" }] },
+    { "id": "PRIVACY_A03", "title": "Privacy-Enhancing Technologies", "tier": "advanced", "module_type": "specialization", "competency_ids": ["PRIVACY_LEAD"], "prerequisites": [{ "module_id": "PRIVACY_I03" }] },
+    { "id": "PRIVACY_A04", "title": "Incident Response for Privacy Breaches", "tier": "advanced", "module_type": "core", "competency_ids": ["PRIVACY_LEAD"], "prerequisites": [{ "module_id": "PRIVACY_A01" }, { "module_id": "IR_F01" }] },
+    { "id": "PRIVACY_A05", "title": "AI & Automated Decision-Making Privacy", "tier": "advanced", "module_type": "depth", "competency_ids": ["PRIVACY_LEAD"], "prerequisites": [{ "module_id": "PRIVACY_A01" }, { "module_id": "AIGOV_F02" }] },
+    { "id": "PRIVACY_CAP", "title": "Capstone: Privacy Program Design for a Global SaaS Company", "tier": "advanced", "module_type": "capstone", "competency_ids": ["PRIVACY_LEAD"], "prerequisites": [{ "module_id": "PRIVACY_A01" }, { "module_id": "PRIVACY_A02" }] }
+  ]
+}

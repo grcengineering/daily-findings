@@ -1,0 +1,32 @@
+{
+  "domain_id": "DOMAIN_RISK",
+  "name": "Risk Management",
+  "slug": "risk",
+  "description": "Risk identification, quantification, treatment, and executive decision support.",
+  "color": "#f59e0b",
+  "gradient": "from-amber-500 to-orange-600",
+  "icon": "ShieldAlert",
+  "competencies": [
+    { "competency_id": "RISK_FOUND", "title": "Risk fundamentals and assessment", "tier": "foundational", "domain_id": "DOMAIN_RISK" },
+    { "competency_id": "RISK_APPLY", "title": "Applied risk operations", "tier": "intermediate", "domain_id": "DOMAIN_RISK" },
+    { "competency_id": "RISK_LEAD", "title": "Enterprise risk leadership", "tier": "advanced", "domain_id": "DOMAIN_RISK" }
+  ],
+  "modules": [
+    { "id": "RISK_F01", "title": "Risk Management Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["RISK_FOUND"], "prerequisites": [] },
+    { "id": "RISK_F02", "title": "Risk Identification & Categorization", "tier": "foundational", "module_type": "core", "competency_ids": ["RISK_FOUND"], "prerequisites": [{ "module_id": "RISK_F01" }] },
+    { "id": "RISK_F03", "title": "Risk Assessment Methodologies", "tier": "foundational", "module_type": "core", "competency_ids": ["RISK_FOUND"], "prerequisites": [{ "module_id": "RISK_F02" }] },
+    { "id": "RISK_F04", "title": "Risk Register Development", "tier": "foundational", "module_type": "core", "competency_ids": ["RISK_FOUND"], "prerequisites": [{ "module_id": "RISK_F03" }] },
+    { "id": "RISK_F05", "title": "Risk Appetite & Tolerance", "tier": "foundational", "module_type": "core", "competency_ids": ["RISK_FOUND"], "prerequisites": [{ "module_id": "RISK_F01" }] },
+    { "id": "RISK_I01", "title": "Quantitative Risk Analysis (FAIR Model)", "tier": "intermediate", "module_type": "core", "competency_ids": ["RISK_APPLY"], "prerequisites": [{ "module_id": "RISK_F03" }] },
+    { "id": "RISK_I02", "title": "Operational Risk Management", "tier": "intermediate", "module_type": "core", "competency_ids": ["RISK_APPLY"], "prerequisites": [{ "module_id": "RISK_F04" }] },
+    { "id": "RISK_I03", "title": "Risk Treatment & Mitigation Strategies", "tier": "intermediate", "module_type": "core", "competency_ids": ["RISK_APPLY"], "prerequisites": [{ "module_id": "RISK_F04" }] },
+    { "id": "RISK_I04", "title": "Risk Reporting & Dashboards", "tier": "intermediate", "module_type": "core", "competency_ids": ["RISK_APPLY"], "prerequisites": [{ "module_id": "RISK_I02" }] },
+    { "id": "RISK_I05", "title": "Risk Scoping & Asset/Process Mapping", "tier": "intermediate", "module_type": "depth", "competency_ids": ["RISK_APPLY"], "prerequisites": [{ "module_id": "RISK_F02" }] },
+    { "id": "RISK_I06", "title": "Risk Workshops & Stakeholder Facilitation", "tier": "intermediate", "module_type": "depth", "competency_ids": ["RISK_APPLY"], "prerequisites": [{ "module_id": "RISK_I03" }] },
+    { "id": "RISK_A01", "title": "Enterprise Risk Management (ERM) Frameworks", "tier": "advanced", "module_type": "core", "competency_ids": ["RISK_LEAD"], "prerequisites": [{ "module_id": "RISK_I01" }, { "module_id": "RISK_I04" }] },
+    { "id": "RISK_A02", "title": "Cyber Risk Quantification Advanced", "tier": "advanced", "module_type": "depth", "competency_ids": ["RISK_LEAD"], "prerequisites": [{ "module_id": "RISK_I01" }] },
+    { "id": "RISK_A03", "title": "Emerging Risk & Horizon Scanning", "tier": "advanced", "module_type": "depth", "competency_ids": ["RISK_LEAD"], "prerequisites": [{ "module_id": "RISK_A01" }] },
+    { "id": "RISK_A04", "title": "Risk-Based Decision Making for Leadership", "tier": "advanced", "module_type": "core", "competency_ids": ["RISK_LEAD"], "prerequisites": [{ "module_id": "RISK_A01" }] },
+    { "id": "RISK_CAP", "title": "Capstone: Enterprise Risk Assessment & Register Build", "tier": "advanced", "module_type": "capstone", "competency_ids": ["RISK_LEAD"], "prerequisites": [{ "module_id": "RISK_A01" }] }
+  ]
+}

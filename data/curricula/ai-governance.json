@@ -1,0 +1,32 @@
+{
+  "domain_id": "DOMAIN_AI_GOV",
+  "name": "AI Governance & Emerging Tech Risk",
+  "slug": "ai-governance",
+  "description": "AI inventory, risk, controls, assurance, and evolving regulation.",
+  "color": "#f97316",
+  "gradient": "from-orange-500 to-amber-600",
+  "icon": "Bot",
+  "competencies": [
+    { "competency_id": "AIGOV_FOUND", "title": "AI governance fundamentals", "tier": "foundational", "domain_id": "DOMAIN_AI_GOV" },
+    { "competency_id": "AIGOV_EXEC", "title": "AI risk operations", "tier": "intermediate", "domain_id": "DOMAIN_AI_GOV" },
+    { "competency_id": "AIGOV_LEAD", "title": "Enterprise AI governance leadership", "tier": "advanced", "domain_id": "DOMAIN_AI_GOV" }
+  ],
+  "modules": [
+    { "id": "AIGOV_F01", "title": "AI Governance Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["AIGOV_FOUND"], "prerequisites": [] },
+    { "id": "AIGOV_F02", "title": "AI Risk Identification & Assessment", "tier": "foundational", "module_type": "core", "competency_ids": ["AIGOV_FOUND"], "prerequisites": [{ "module_id": "AIGOV_F01" }] },
+    { "id": "AIGOV_F03", "title": "Responsible AI Principles", "tier": "foundational", "module_type": "core", "competency_ids": ["AIGOV_FOUND"], "prerequisites": [{ "module_id": "AIGOV_F01" }] },
+    { "id": "AIGOV_F04", "title": "AI Regulatory Landscape (EU AI Act & Beyond)", "tier": "foundational", "module_type": "core", "competency_ids": ["AIGOV_FOUND"], "prerequisites": [{ "module_id": "AIGOV_F01" }] },
+    { "id": "AIGOV_F05", "title": "AI System Inventory & Risk Tiering", "tier": "foundational", "module_type": "core", "competency_ids": ["AIGOV_FOUND"], "prerequisites": [{ "module_id": "AIGOV_F02" }] },
+    { "id": "AIGOV_I01", "title": "AI Model Risk Management", "tier": "intermediate", "module_type": "core", "competency_ids": ["AIGOV_EXEC"], "prerequisites": [{ "module_id": "AIGOV_F05" }] },
+    { "id": "AIGOV_I02", "title": "Bias Detection & Mitigation", "tier": "intermediate", "module_type": "core", "competency_ids": ["AIGOV_EXEC"], "prerequisites": [{ "module_id": "AIGOV_I01" }] },
+    { "id": "AIGOV_I03", "title": "AI Transparency & Explainability", "tier": "intermediate", "module_type": "core", "competency_ids": ["AIGOV_EXEC"], "prerequisites": [{ "module_id": "AIGOV_I01" }] },
+    { "id": "AIGOV_I04", "title": "AI Vendor & Third-Party Risk", "tier": "intermediate", "module_type": "depth", "competency_ids": ["AIGOV_EXEC"], "prerequisites": [{ "module_id": "AIGOV_I01" }, { "module_id": "TPRM_F02" }] },
+    { "id": "AIGOV_I05", "title": "AI Monitoring & Incident Response", "tier": "intermediate", "module_type": "core", "competency_ids": ["AIGOV_EXEC"], "prerequisites": [{ "module_id": "AIGOV_I01" }] },
+    { "id": "AIGOV_A01", "title": "Enterprise AI Governance Strategy", "tier": "advanced", "module_type": "core", "competency_ids": ["AIGOV_LEAD"], "prerequisites": [{ "module_id": "AIGOV_I05" }] },
+    { "id": "AIGOV_A02", "title": "AI Audit & Assurance", "tier": "advanced", "module_type": "core", "competency_ids": ["AIGOV_LEAD"], "prerequisites": [{ "module_id": "AIGOV_A01" }, { "module_id": "AUDIT_I04" }] },
+    { "id": "AIGOV_A03", "title": "Emerging Technology Risk (IoT, Quantum, Blockchain)", "tier": "advanced", "module_type": "depth", "competency_ids": ["AIGOV_LEAD"], "prerequisites": [{ "module_id": "AIGOV_A01" }] },
+    { "id": "AIGOV_A04", "title": "AI in GRC Automation & Decision Support", "tier": "advanced", "module_type": "depth", "competency_ids": ["AIGOV_LEAD"], "prerequisites": [{ "module_id": "AIGOV_A01" }] },
+    { "id": "AIGOV_A05", "title": "AI Governance Program Maturity", "tier": "advanced", "module_type": "core", "competency_ids": ["AIGOV_LEAD"], "prerequisites": [{ "module_id": "AIGOV_A01" }] },
+    { "id": "AIGOV_CAP", "title": "Capstone: AI Governance Framework for Fintech", "tier": "advanced", "module_type": "capstone", "competency_ids": ["AIGOV_LEAD"], "prerequisites": [{ "module_id": "AIGOV_A01" }] }
+  ]
+}

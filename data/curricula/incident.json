@@ -1,0 +1,30 @@
+{
+  "domain_id": "DOMAIN_INCIDENT",
+  "name": "Incident Response & Resilience",
+  "slug": "incident",
+  "description": "Incident response, continuity, resilience, and post-incident governance.",
+  "color": "#ef4444",
+  "gradient": "from-red-500 to-rose-700",
+  "icon": "Siren",
+  "competencies": [
+    { "competency_id": "IR_FOUND", "title": "Incident and continuity fundamentals", "tier": "foundational", "domain_id": "DOMAIN_INCIDENT" },
+    { "competency_id": "IR_EXEC", "title": "Operational response and assurance", "tier": "intermediate", "domain_id": "DOMAIN_INCIDENT" },
+    { "competency_id": "IR_LEAD", "title": "Resilience leadership", "tier": "advanced", "domain_id": "DOMAIN_INCIDENT" }
+  ],
+  "modules": [
+    { "id": "IR_F01", "title": "Incident Response Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["IR_FOUND"], "prerequisites": [] },
+    { "id": "IR_F02", "title": "Incident Classification & Triage", "tier": "foundational", "module_type": "core", "competency_ids": ["IR_FOUND"], "prerequisites": [{ "module_id": "IR_F01" }] },
+    { "id": "IR_F03", "title": "Business Continuity Planning Basics", "tier": "foundational", "module_type": "core", "competency_ids": ["IR_FOUND"], "prerequisites": [] },
+    { "id": "IR_F04", "title": "Disaster Recovery Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["IR_FOUND"], "prerequisites": [{ "module_id": "IR_F03" }] },
+    { "id": "IR_I01", "title": "Building an Incident Response Plan", "tier": "intermediate", "module_type": "core", "competency_ids": ["IR_EXEC"], "prerequisites": [{ "module_id": "IR_F02" }] },
+    { "id": "IR_I02", "title": "Tabletop Exercises & Simulations", "tier": "intermediate", "module_type": "core", "competency_ids": ["IR_EXEC"], "prerequisites": [{ "module_id": "IR_I01" }] },
+    { "id": "IR_I03", "title": "Business Impact Analysis (BIA)", "tier": "intermediate", "module_type": "core", "competency_ids": ["IR_EXEC"], "prerequisites": [{ "module_id": "IR_F03" }] },
+    { "id": "IR_I04", "title": "Forensic Evidence Preservation", "tier": "intermediate", "module_type": "depth", "competency_ids": ["IR_EXEC"], "prerequisites": [{ "module_id": "IR_I01" }] },
+    { "id": "IR_I05", "title": "Post-Incident Governance & Assurance", "tier": "intermediate", "module_type": "core", "competency_ids": ["IR_EXEC"], "prerequisites": [{ "module_id": "IR_I01" }] },
+    { "id": "IR_A01", "title": "Crisis Management & Executive Response", "tier": "advanced", "module_type": "core", "competency_ids": ["IR_LEAD"], "prerequisites": [{ "module_id": "IR_I02" }] },
+    { "id": "IR_A02", "title": "Cyber Resilience Architecture", "tier": "advanced", "module_type": "core", "competency_ids": ["IR_LEAD"], "prerequisites": [{ "module_id": "IR_A01" }] },
+    { "id": "IR_A03", "title": "Regulatory Notification Requirements", "tier": "advanced", "module_type": "depth", "competency_ids": ["IR_LEAD"], "prerequisites": [{ "module_id": "IR_I05" }] },
+    { "id": "IR_A04", "title": "Resilience Program Maturity", "tier": "advanced", "module_type": "core", "competency_ids": ["IR_LEAD"], "prerequisites": [{ "module_id": "IR_A02" }] },
+    { "id": "IR_CAP", "title": "Capstone: Incident Timeline & Notification Plan", "tier": "advanced", "module_type": "capstone", "competency_ids": ["IR_LEAD"], "prerequisites": [{ "module_id": "IR_A01" }] }
+  ]
+}

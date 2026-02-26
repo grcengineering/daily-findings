@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Card, CardContent } from "@/components/ui/card";
@@ -272,8 +273,16 @@ export default function HistoryPage() {
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mt-3">
-                            Full session content is not available in the history view.
+                            Use the Open Module action to review this topic again with full content.
                           </p>
+                          <div className="mt-3">
+                            <Link
+                              href={`/session?topicId=${encodeURIComponent(session.topicId)}&from=history&overridePrereq=1`}
+                              className="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+                            >
+                              Open Module
+                            </Link>
+                          </div>
                         </motion.div>
                       )}
                     </CardContent>

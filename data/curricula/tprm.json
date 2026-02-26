@@ -1,0 +1,30 @@
+{
+  "domain_id": "DOMAIN_TPRM",
+  "name": "Third-Party Risk",
+  "slug": "thirdparty",
+  "description": "Vendor risk, due diligence, contract controls, and monitoring.",
+  "color": "#06b6d4",
+  "gradient": "from-cyan-500 to-teal-600",
+  "icon": "Building2",
+  "competencies": [
+    { "competency_id": "TPRM_FOUND", "title": "TPRM fundamentals", "tier": "foundational", "domain_id": "DOMAIN_TPRM" },
+    { "competency_id": "TPRM_EXEC", "title": "Vendor lifecycle execution", "tier": "intermediate", "domain_id": "DOMAIN_TPRM" },
+    { "competency_id": "TPRM_LEAD", "title": "Enterprise TPRM strategy", "tier": "advanced", "domain_id": "DOMAIN_TPRM" }
+  ],
+  "modules": [
+    { "id": "TPRM_F01", "title": "TPRM Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["TPRM_FOUND"], "prerequisites": [] },
+    { "id": "TPRM_F02", "title": "Vendor Risk Assessment Basics", "tier": "foundational", "module_type": "core", "competency_ids": ["TPRM_FOUND"], "prerequisites": [{ "module_id": "TPRM_F01" }] },
+    { "id": "TPRM_F03", "title": "Due Diligence Process", "tier": "foundational", "module_type": "core", "competency_ids": ["TPRM_FOUND"], "prerequisites": [{ "module_id": "TPRM_F02" }] },
+    { "id": "TPRM_F04", "title": "Security Questionnaires", "tier": "foundational", "module_type": "depth", "competency_ids": ["TPRM_FOUND"], "prerequisites": [{ "module_id": "TPRM_F02" }] },
+    { "id": "TPRM_I01", "title": "TPRM Program Development", "tier": "intermediate", "module_type": "core", "competency_ids": ["TPRM_EXEC"], "prerequisites": [{ "module_id": "TPRM_F03" }] },
+    { "id": "TPRM_I02", "title": "Continuous Vendor Monitoring", "tier": "intermediate", "module_type": "core", "competency_ids": ["TPRM_EXEC"], "prerequisites": [{ "module_id": "TPRM_I01" }] },
+    { "id": "TPRM_I03", "title": "Fourth-Party (Nth-Party) Risk", "tier": "intermediate", "module_type": "depth", "competency_ids": ["TPRM_EXEC"], "prerequisites": [{ "module_id": "TPRM_I01" }] },
+    { "id": "TPRM_I04", "title": "Vendor Tiering & Classification", "tier": "intermediate", "module_type": "core", "competency_ids": ["TPRM_EXEC"], "prerequisites": [{ "module_id": "TPRM_F02" }] },
+    { "id": "TPRM_I05", "title": "Contract Security & SLA Management", "tier": "intermediate", "module_type": "core", "competency_ids": ["TPRM_EXEC"], "prerequisites": [{ "module_id": "TPRM_F03" }] },
+    { "id": "TPRM_A01", "title": "Enterprise TPRM Strategy", "tier": "advanced", "module_type": "core", "competency_ids": ["TPRM_LEAD"], "prerequisites": [{ "module_id": "TPRM_I02" }, { "module_id": "TPRM_I04" }] },
+    { "id": "TPRM_A02", "title": "TPRM Automation & Platforms", "tier": "advanced", "module_type": "depth", "competency_ids": ["TPRM_LEAD"], "prerequisites": [{ "module_id": "TPRM_A01" }] },
+    { "id": "TPRM_A03", "title": "Cloud Service Provider Risk Management", "tier": "advanced", "module_type": "depth", "competency_ids": ["TPRM_LEAD"], "prerequisites": [{ "module_id": "TPRM_I02" }] },
+    { "id": "TPRM_A04", "title": "M&A Due Diligence & Integration", "tier": "advanced", "module_type": "specialization", "competency_ids": ["TPRM_LEAD"], "prerequisites": [{ "module_id": "TPRM_A01" }] },
+    { "id": "TPRM_CAP", "title": "Capstone: Vendor Evaluation & Go/No-Go Decision", "tier": "advanced", "module_type": "capstone", "competency_ids": ["TPRM_LEAD"], "prerequisites": [{ "module_id": "TPRM_A01" }] }
+  ]
+}

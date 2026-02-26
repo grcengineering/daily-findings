@@ -1,0 +1,32 @@
+{
+  "domain_id": "DOMAIN_AUDIT",
+  "name": "Audit & Assurance",
+  "slug": "audit",
+  "description": "Audit planning, evidence engineering, testing, and program leadership.",
+  "color": "#8b5cf6",
+  "gradient": "from-violet-500 to-purple-700",
+  "icon": "ClipboardCheck",
+  "competencies": [
+    { "competency_id": "AUDIT_FOUND", "title": "Audit foundations and evidence", "tier": "foundational", "domain_id": "DOMAIN_AUDIT" },
+    { "competency_id": "AUDIT_EXEC", "title": "Audit execution and findings", "tier": "intermediate", "domain_id": "DOMAIN_AUDIT" },
+    { "competency_id": "AUDIT_LEAD", "title": "Continuous assurance leadership", "tier": "advanced", "domain_id": "DOMAIN_AUDIT" }
+  ],
+  "modules": [
+    { "id": "AUDIT_F01", "title": "IT Audit Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["AUDIT_FOUND"], "prerequisites": [] },
+    { "id": "AUDIT_F02", "title": "Audit Planning & Scoping", "tier": "foundational", "module_type": "core", "competency_ids": ["AUDIT_FOUND"], "prerequisites": [{ "module_id": "AUDIT_F01" }] },
+    { "id": "AUDIT_F03", "title": "Evidence Collection & Documentation", "tier": "foundational", "module_type": "core", "competency_ids": ["AUDIT_FOUND"], "prerequisites": [{ "module_id": "AUDIT_F01" }] },
+    { "id": "AUDIT_F04", "title": "Control Testing Methodologies", "tier": "foundational", "module_type": "core", "competency_ids": ["AUDIT_FOUND"], "prerequisites": [{ "module_id": "AUDIT_F03" }] },
+    { "id": "AUDIT_I01", "title": "SOC 2 Audit Execution", "tier": "intermediate", "module_type": "core", "competency_ids": ["AUDIT_EXEC"], "prerequisites": [{ "module_id": "AUDIT_F02" }, { "module_id": "AUDIT_F04" }] },
+    { "id": "AUDIT_I02", "title": "ISO 27001 Internal Audit Process", "tier": "intermediate", "module_type": "core", "competency_ids": ["AUDIT_EXEC"], "prerequisites": [{ "module_id": "AUDIT_F02" }] },
+    { "id": "AUDIT_I03", "title": "Risk-Based Audit Planning", "tier": "intermediate", "module_type": "core", "competency_ids": ["AUDIT_EXEC"], "prerequisites": [{ "module_id": "AUDIT_F02" }, { "module_id": "RISK_F03" }] },
+    { "id": "AUDIT_I04", "title": "Evidence Engineering & Control Test Design", "tier": "intermediate", "module_type": "core", "competency_ids": ["AUDIT_EXEC"], "prerequisites": [{ "module_id": "AUDIT_F03" }, { "module_id": "AUDIT_F04" }] },
+    { "id": "AUDIT_I05", "title": "Finding Management & Remediation", "tier": "intermediate", "module_type": "core", "competency_ids": ["AUDIT_EXEC"], "prerequisites": [{ "module_id": "AUDIT_I01" }] },
+    { "id": "AUDIT_I06", "title": "Writing Findings & Managing Stakeholder Conflict", "tier": "intermediate", "module_type": "depth", "competency_ids": ["AUDIT_EXEC"], "prerequisites": [{ "module_id": "AUDIT_I05" }] },
+    { "id": "AUDIT_A01", "title": "Continuous Auditing & Monitoring", "tier": "advanced", "module_type": "core", "competency_ids": ["AUDIT_LEAD"], "prerequisites": [{ "module_id": "AUDIT_I04" }] },
+    { "id": "AUDIT_A02", "title": "Advanced Sampling & Analytics", "tier": "advanced", "module_type": "depth", "competency_ids": ["AUDIT_LEAD"], "prerequisites": [{ "module_id": "AUDIT_I01" }] },
+    { "id": "AUDIT_A03", "title": "Audit Program Management", "tier": "advanced", "module_type": "core", "competency_ids": ["AUDIT_LEAD"], "prerequisites": [{ "module_id": "AUDIT_A01" }] },
+    { "id": "AUDIT_A04", "title": "Third-Party Audit Management", "tier": "advanced", "module_type": "depth", "competency_ids": ["AUDIT_LEAD"], "prerequisites": [{ "module_id": "AUDIT_A01" }] },
+    { "id": "AUDIT_A05", "title": "Audit Technology & Innovation", "tier": "advanced", "module_type": "specialization", "competency_ids": ["AUDIT_LEAD"], "prerequisites": [{ "module_id": "AUDIT_A01" }] },
+    { "id": "AUDIT_CAP", "title": "Capstone: Mock SOC 2 Engagement", "tier": "advanced", "module_type": "capstone", "competency_ids": ["AUDIT_LEAD"], "prerequisites": [{ "module_id": "AUDIT_A03" }] }
+  ]
+}

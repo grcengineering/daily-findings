@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getNextTopic } from "@/lib/curriculum";
+import { getNextTopic, getMissingPrerequisites } from "@/lib/curriculum";
 
 function safeJsonParse(json: string, fallback: unknown = null) {
   try {
@@ -13,10 +13,30 @@ function safeJsonParse(json: string, fallback: unknown = null) {
 export async function GET(request: NextRequest) {
   try {
     const topicId = request.nextUrl.searchParams.get("topicId");
+    const overridePrereq = request.nextUrl.searchParams.get("overridePrereq") === "1";
     
     let sessionContent;
     
     if (topicId) {
+      if (!overridePrereq) {
+        const completed = await prisma.topicProgress.findMany({
+          select: { topicId: true },
+        });
+        const missing = getMissingPrerequisites(
+          topicId,
+          completed.map((row) => row.topicId)
+        );
+        if (missing.length > 0) {
+          return NextResponse.json(
+            {
+              error: "Recommended prerequisites are not complete",
+              missingPrerequisites: missing,
+            },
+            { status: 409 }
+          );
+        }
+      }
+
       sessionContent = await prisma.sessionContent.findUnique({
         where: { topicId },
       });
@@ -62,9 +82,13 @@ export async function GET(request: NextRequest) {
       domain: sessionContent.domain,
       topic: sessionContent.topic,
       level: sessionContent.level,
+      moduleType: sessionContent.moduleType,
+      competencyIds: safeJsonParse(sessionContent.competencyIds, []),
+      prerequisites: safeJsonParse(sessionContent.prerequisites, []),
       lesson: safeJsonParse(sessionContent.lessonContent),
       scenario: safeJsonParse(sessionContent.scenarioContent),
       quiz: safeJsonParse(sessionContent.quizContent, { questions: [] }),
+      capstone: safeJsonParse(sessionContent.capstoneContent ?? "null"),
       confidenceScore: sessionContent.confidenceScore,
       completed: todayCompletion != null,
       quizScore: todayCompletion?.quizScore ?? null,

@@ -122,7 +122,6 @@ export function SourcesFooter({ citations }: { citations?: Citation[] }) {
 
 export function VerificationIndicator({
   citations,
-  confidenceScore,
   flaggedClaims,
 }: VerificationIndicatorProps) {
   return (

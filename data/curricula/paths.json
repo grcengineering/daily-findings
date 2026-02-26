@@ -1,0 +1,55 @@
+{
+  "paths": [
+    {
+      "path_id": "TRACK_PRACTITIONER_TO_TECHNICAL",
+      "title": "Practitioner to Technical",
+      "module_ids": [
+        "CONTROLS_F01",
+        "AUDIT_I04",
+        "GRCENG_F02",
+        "GRCENG_F03",
+        "GRCENG_F04",
+        "GRCENG_I01",
+        "GRCENG_I05",
+        "GRCENG_I06",
+        "GRCENG_CAP"
+      ],
+      "badges": [
+        {
+          "badge_id": "TECH_FOUNDATIONS",
+          "title": "Technical Foundations",
+          "criteria": [
+            "CONTROLS_F01",
+            "GRCENG_F02",
+            "GRCENG_F03",
+            "GRCENG_F04"
+          ]
+        },
+        {
+          "badge_id": "EVIDENCE_ENGINEER",
+          "title": "Evidence Engineer",
+          "criteria": [
+            "AUDIT_I04",
+            "GRCENG_I06"
+          ]
+        },
+        {
+          "badge_id": "GRC_ENGINEER",
+          "title": "GRC Engineer",
+          "criteria": [
+            "CONTROLS_F01",
+            "AUDIT_I04",
+            "GRCENG_F02",
+            "GRCENG_F03",
+            "GRCENG_F04",
+            "GRCENG_I01",
+            "GRCENG_I05",
+            "GRCENG_I06",
+            "GRCENG_CAP"
+          ],
+          "minimum_quiz_average": 80
+        }
+      ]
+    }
+  ]
+}

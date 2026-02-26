@@ -29,6 +29,8 @@ import {
 import { cn } from "@/lib/utils";
 import { DOMAIN_CONFIG, DOMAINS, type Domain } from "@/lib/domain-colors";
 import { fadeInUp, staggerContainer } from "@/lib/animations";
+import { Button } from "@/components/ui/button";
+import { ExpandIcon, XIcon } from "lucide-react";
 
 interface UserStats {
   currentStreak: number;
@@ -83,7 +85,7 @@ const DOMAIN_SHORT_NAMES: Record<string, string> = {
   "Compliance & Regulatory": "Compliance",
   "Audit & Assurance": "Audit",
   "Policy & Governance": "Policy",
-  "Incident Response & BCM": "Incident Resp.",
+  "Incident Response & Resilience": "Incident Resp.",
   "Third-Party Risk": "3rd Party",
 };
 
@@ -99,6 +101,7 @@ const BADGE_ICONS: Record<string, string> = {
 export default function ProgressPage() {
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedChart, setExpandedChart] = useState<"radar" | "trend" | null>(null);
 
   useEffect(() => {
     fetch("/api/progress")
@@ -173,7 +176,13 @@ export default function ProgressPage() {
           <motion.div variants={fadeInUp}>
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-lg">Domain Coverage</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-lg">Domain Coverage</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setExpandedChart("radar")} className="gap-1">
+                    <ExpandIcon className="size-3.5" />
+                    Enlarge
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
@@ -217,7 +226,13 @@ export default function ProgressPage() {
           <motion.div variants={fadeInUp}>
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-lg">Quiz Score Trend</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-lg">Quiz Score Trend</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setExpandedChart("trend")} className="gap-1">
+                    <ExpandIcon className="size-3.5" />
+                    Enlarge
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {quizTrendData.length === 0 ? (
@@ -448,6 +463,70 @@ export default function ProgressPage() {
           </Card>
         </motion.div>
       </div>
+
+      {expandedChart && (
+        <div className="fixed inset-0 z-[70] bg-black/85 p-4 md:p-8">
+          <div className="h-full rounded-xl border border-border bg-background overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h3 className="font-semibold">
+                {expandedChart === "radar" ? "Domain Coverage (Expanded)" : "Quiz Score Trend (Expanded)"}
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setExpandedChart(null)} aria-label="Close enlarged chart">
+                <XIcon className="size-4" />
+              </Button>
+            </div>
+            <div className="flex-1 p-4">
+              {expandedChart === "radar" ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="65%">
+                    <PolarGrid stroke="var(--border)" />
+                    <PolarAngleAxis
+                      dataKey="domain"
+                      tick={{ fontSize: 14, fill: "var(--foreground)", fontWeight: 600 }}
+                    />
+                    <PolarRadiusAxis
+                      angle={90}
+                      domain={[0, 100]}
+                      tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                      tickFormatter={(v: number) => `${v}%`}
+                    />
+                    <Radar
+                      name="Completion"
+                      dataKey="completion"
+                      stroke="#818cf8"
+                      fill="#6366f1"
+                      fillOpacity={0.35}
+                      strokeWidth={2.5}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={quizTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} tickFormatter={(v: number) => `${v}%`} />
+                    <Line
+                      type="monotone"
+                      dataKey="score"
+                      stroke="url(#scoreGradientExpanded)"
+                      strokeWidth={2.5}
+                      dot={{ fill: "#6366f1", r: 4, strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: "#6366f1" }}
+                    />
+                    <defs>
+                      <linearGradient id="scoreGradientExpanded" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#6366f1" />
+                        <stop offset="100%" stopColor="#06b6d4" />
+                      </linearGradient>
+                    </defs>
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </PageTransition>
   );
 }

@@ -10,12 +10,14 @@ import {
   ArrowLeftIcon,
   LightbulbIcon,
   BookOpenIcon,
+  ExpandIcon,
 } from "lucide-react";
 import {
   FlaggedClaimsWarning,
   SourcesFooter,
 } from "./VerificationIndicator";
 import { RichText } from "./RichText";
+import { cn } from "@/lib/utils";
 
 interface Citation {
   url: string;
@@ -65,6 +67,7 @@ export function LessonView({ lesson, domainColor, onComplete }: LessonViewProps)
     1 + lesson.sections.length + 1 + (hasSources ? 1 : 0); // intro + sections + takeaways + sources
   const [stepIdx, setStepIdx] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [enlarged, setEnlarged] = useState(false);
 
   const steps: Step[] = [
     { kind: "intro" },
@@ -109,10 +112,15 @@ export function LessonView({ lesson, domainColor, onComplete }: LessonViewProps)
   };
 
   return (
-    <div className="max-w-[700px] mx-auto py-8 px-4 flex flex-col min-h-[calc(100vh-160px)]">
+    <div
+      className={cn(
+        "mx-auto py-8 px-4 flex flex-col min-h-[calc(100vh-160px)] transition-[max-width]",
+        enlarged ? "max-w-[980px]" : "max-w-[700px]"
+      )}
+    >
       {/* Top bar: title + progress */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
           <Badge variant="secondary" className="gap-1.5">
             <ClockIcon className="size-3" />
             {lesson.estimatedReadingTime} min
@@ -121,6 +129,16 @@ export function LessonView({ lesson, domainColor, onComplete }: LessonViewProps)
             <BookOpenIcon className="size-3" />
             {stepIdx + 1} / {totalSteps}
           </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEnlarged((value) => !value)}
+            className="gap-1 ml-auto"
+            aria-label="Enlarge lesson content"
+          >
+            <ExpandIcon className="size-3.5" />
+            {enlarged ? "Normal size" : "Enlarge"}
+          </Button>
         </div>
         <h1 className="text-2xl font-bold tracking-tight">{lesson.title}</h1>
 

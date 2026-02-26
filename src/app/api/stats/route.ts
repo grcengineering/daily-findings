@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getDomainProgress } from "@/lib/curriculum";
+import { getAllTopics, getDomainProgress } from "@/lib/curriculum";
 
 export async function GET() {
   try {
@@ -30,7 +30,14 @@ export async function GET() {
       },
     });
 
-    const topicIds = Array.from(new Set(completions.map((c) => c.topicId)));
+    const allTopics = getAllTopics();
+    const topicMetaById = new Map(allTopics.map((topic) => [topic.id, topic]));
+    const validTopicIds = new Set(allTopics.map((topic) => topic.id));
+    const validCompletions = completions.filter((completion) =>
+      validTopicIds.has(completion.topicId)
+    );
+
+    const topicIds = Array.from(new Set(validCompletions.map((c) => c.topicId)));
     const contentRows = topicIds.length
       ? await prisma.sessionContent.findMany({
           where: { topicId: { in: topicIds } },
@@ -44,15 +51,16 @@ export async function GET() {
       : [];
     const contentByTopicId = new Map(contentRows.map((r) => [r.topicId, r]));
 
-    const recentSessions = completions.slice(0, 10).map((c) => {
+    const recentSessions = validCompletions.slice(0, 10).map((c) => {
       const content = contentByTopicId.get(c.topicId);
+      const topicMeta = topicMetaById.get(c.topicId);
       return {
         id: c.id,
         date: c.date,
-        domain: content?.domain ?? "Unknown",
-        topic: content?.topic ?? c.topicId,
+        domain: topicMeta?.domain ?? content?.domain ?? "Unknown",
+        topic: topicMeta?.title ?? content?.topic ?? c.topicId,
         topicId: c.topicId,
-        level: content?.level ?? "unknown",
+        level: topicMeta?.level ?? content?.level ?? "unknown",
         completed: true,
         quizScore: c.quizScore ?? null,
         quizTotal: c.quizTotal ?? null,
@@ -63,18 +71,21 @@ export async function GET() {
     });
 
     const domainInfo = getDomainProgress();
-    const allProgress = await prisma.topicProgress.findMany();
+    const allProgress = (await prisma.topicProgress.findMany()).filter((progressRow) =>
+      validTopicIds.has(progressRow.topicId)
+    );
 
     const completedByDomain: Record<string, number> = {};
     for (const p of allProgress) {
-      completedByDomain[p.domain] = (completedByDomain[p.domain] ?? 0) + 1;
+      const canonicalDomain = topicMetaById.get(p.topicId)?.domain ?? p.domain;
+      completedByDomain[canonicalDomain] = (completedByDomain[canonicalDomain] ?? 0) + 1;
     }
 
     const domainProgress: Record<string, { total: number; completed: number }> = {};
     for (const [name, { total }] of Object.entries(domainInfo)) {
       domainProgress[name] = {
         total,
-        completed: completedByDomain[name] ?? 0,
+        completed: Math.min(total, completedByDomain[name] ?? 0),
       };
     }
 

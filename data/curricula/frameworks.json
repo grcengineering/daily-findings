@@ -1,0 +1,30 @@
+{
+  "domain_id": "DOMAIN_FRAMEWORKS",
+  "name": "Frameworks & Standards",
+  "slug": "frameworks",
+  "description": "Framework selection, scoping, harmonization, and strategy.",
+  "color": "#6366f1",
+  "gradient": "from-indigo-500 to-indigo-700",
+  "icon": "Layers",
+  "competencies": [
+    { "competency_id": "FRMWK_FOUND", "title": "Framework fundamentals", "tier": "foundational", "domain_id": "DOMAIN_FRAMEWORKS" },
+    { "competency_id": "FRMWK_APPLY", "title": "Framework implementation and crosswalk", "tier": "intermediate", "domain_id": "DOMAIN_FRAMEWORKS" },
+    { "competency_id": "FRMWK_STRAT", "title": "Multi-framework strategy", "tier": "advanced", "domain_id": "DOMAIN_FRAMEWORKS" }
+  ],
+  "modules": [
+    { "id": "FRMWK_F01", "title": "NIST CSF Foundations", "tier": "foundational", "module_type": "core", "competency_ids": ["FRMWK_FOUND"], "prerequisites": [] },
+    { "id": "FRMWK_F02", "title": "ISO 27001 & ISMS Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["FRMWK_FOUND"], "prerequisites": [] },
+    { "id": "FRMWK_F03", "title": "SOC 2 Trust Service Criteria", "tier": "foundational", "module_type": "core", "competency_ids": ["FRMWK_FOUND"], "prerequisites": [] },
+    { "id": "FRMWK_F04", "title": "CIS Controls & Benchmarks", "tier": "foundational", "module_type": "core", "competency_ids": ["FRMWK_FOUND"], "prerequisites": [] },
+    { "id": "FRMWK_I01", "title": "Framework Scoping & Applicability", "tier": "intermediate", "module_type": "core", "competency_ids": ["FRMWK_APPLY"], "prerequisites": [{ "module_id": "FRMWK_F01" }, { "module_id": "FRMWK_F02" }] },
+    { "id": "FRMWK_I02", "title": "ISO 27001 Implementation & Certification", "tier": "intermediate", "module_type": "core", "competency_ids": ["FRMWK_APPLY"], "prerequisites": [{ "module_id": "FRMWK_F02" }] },
+    { "id": "FRMWK_I03", "title": "SOC 2 Audit Preparation", "tier": "intermediate", "module_type": "depth", "competency_ids": ["FRMWK_APPLY"], "prerequisites": [{ "module_id": "FRMWK_F03" }] },
+    { "id": "FRMWK_I04", "title": "NIST 800-53 Control Families", "tier": "intermediate", "module_type": "core", "competency_ids": ["FRMWK_APPLY"], "prerequisites": [{ "module_id": "FRMWK_F01" }] },
+    { "id": "FRMWK_I05", "title": "Framework Crosswalking & Harmonization", "tier": "intermediate", "module_type": "core", "competency_ids": ["FRMWK_APPLY"], "prerequisites": [{ "module_id": "FRMWK_I01" }, { "module_id": "FRMWK_I04" }] },
+    { "id": "FRMWK_A01", "title": "Multi-Framework Compliance Strategy", "tier": "advanced", "module_type": "core", "competency_ids": ["FRMWK_STRAT"], "prerequisites": [{ "module_id": "FRMWK_I05" }] },
+    { "id": "FRMWK_A02", "title": "Custom Control Framework Design", "tier": "advanced", "module_type": "depth", "competency_ids": ["FRMWK_STRAT"], "prerequisites": [{ "module_id": "FRMWK_I05" }] },
+    { "id": "FRMWK_A03", "title": "NIST Risk Management Framework Advanced", "tier": "advanced", "module_type": "specialization", "competency_ids": ["FRMWK_STRAT"], "prerequisites": [{ "module_id": "FRMWK_I04" }] },
+    { "id": "FRMWK_A04", "title": "International Standards Harmonization", "tier": "advanced", "module_type": "specialization", "competency_ids": ["FRMWK_STRAT"], "prerequisites": [{ "module_id": "FRMWK_A01" }] },
+    { "id": "FRMWK_CAP", "title": "Capstone: Scoped Control Framework & Applicability Statement", "tier": "advanced", "module_type": "capstone", "competency_ids": ["FRMWK_STRAT"], "prerequisites": [{ "module_id": "FRMWK_A01" }] }
+  ]
+}

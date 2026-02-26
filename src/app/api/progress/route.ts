@@ -30,7 +30,15 @@ export async function GET() {
       },
     });
 
-    const completionTopicIds = Array.from(new Set(completions.map((c) => c.topicId)));
+    const allTopics = getAllTopics();
+    const topicMetaById = new Map(allTopics.map((topic) => [topic.id, topic]));
+    const validTopicIds = new Set(allTopics.map((topic) => topic.id));
+
+    const validCompletions = completions.filter((completion) =>
+      validTopicIds.has(completion.topicId)
+    );
+
+    const completionTopicIds = Array.from(new Set(validCompletions.map((c) => c.topicId)));
     const contentRows = completionTopicIds.length
       ? await prisma.sessionContent.findMany({
           where: { topicId: { in: completionTopicIds } },
@@ -44,24 +52,25 @@ export async function GET() {
       : [];
     const contentByTopicId = new Map(contentRows.map((r) => [r.topicId, r]));
 
-    const allSessions = completions.map((c) => {
+    const allSessions = validCompletions.map((c) => {
       const content = contentByTopicId.get(c.topicId);
+      const topicMeta = topicMetaById.get(c.topicId);
       return {
         id: c.id,
         date: c.date,
-        domain: content?.domain ?? "Unknown",
-        topic: content?.topic ?? c.topicId,
+        domain: topicMeta?.domain ?? content?.domain ?? "Unknown",
+        topic: topicMeta?.title ?? content?.topic ?? c.topicId,
         topicId: c.topicId,
-        level: content?.level ?? "unknown",
+        level: topicMeta?.level ?? content?.level ?? "unknown",
         completed: true,
         quizScore: c.quizScore ?? null,
         quizTotal: c.quizTotal ?? null,
       };
     });
 
-    const topicProgress = await prisma.topicProgress.findMany();
-
-    const allTopics = getAllTopics();
+    const topicProgress = (await prisma.topicProgress.findMany()).filter((progressRow) =>
+      validTopicIds.has(progressRow.topicId)
+    );
     const topicsByDomain: Record<string, number> = {};
     for (const t of allTopics) {
       topicsByDomain[t.domain] = (topicsByDomain[t.domain] ?? 0) + 1;
@@ -74,10 +83,11 @@ export async function GET() {
 
     for (const domain of DOMAINS) {
       const total = topicsByDomain[domain] ?? 0;
-      const completedTopics = topicProgress.filter(
-        (p) => p.domain === domain
+      const completedTopics = topicProgress.filter((p) => p.domain === domain);
+      const completed = Math.min(
+        total,
+        new Set(completedTopics.map((topic) => topic.topicId)).size
       );
-      const completed = completedTopics.length;
 
       const sessionsForDomain = allSessions.filter(
         (s) => s.domain === domain && s.quizScore != null && s.quizTotal != null
@@ -106,19 +116,19 @@ export async function GET() {
         id: "first_session",
         name: "First Steps",
         description: "Complete your first training session",
-        earned: stats.totalSessions >= 1,
+        earned: allSessions.length >= 1,
       },
       {
         id: "ten_sessions",
         name: "Dedicated Learner",
         description: "Complete 10 training sessions",
-        earned: stats.totalSessions >= 10,
+        earned: allSessions.length >= 10,
       },
       {
         id: "fifty_sessions",
         name: "GRC Veteran",
         description: "Complete 50 training sessions",
-        earned: stats.totalSessions >= 50,
+        earned: allSessions.length >= 50,
       },
       {
         id: "week_streak",
@@ -157,9 +167,9 @@ export async function GET() {
       domainProgress,
       topicProgress: topicProgress.map((tp) => ({
         topicId: tp.topicId,
-        domain: tp.domain,
-        topic: tp.topic,
-        level: tp.level,
+        domain: topicMetaById.get(tp.topicId)?.domain ?? tp.domain,
+        topic: topicMetaById.get(tp.topicId)?.title ?? tp.topic,
+        level: topicMetaById.get(tp.topicId)?.level ?? tp.level,
         timesStudied: tp.timesStudied,
         lastStudied: tp.lastStudied?.toISOString() ?? null,
         quizScores: tp.quizScores,

@@ -1,0 +1,61 @@
+{
+  "domain_id": "DOMAIN_GRC_ENG",
+  "name": "GRC Engineering & Automation",
+  "slug": "grc-engineering",
+  "description": "Compliance engineering, evidence pipelines, policy-as-code, and platform architecture.",
+  "color": "#7c3aed",
+  "gradient": "from-violet-500 to-indigo-700",
+  "icon": "Code",
+  "competencies": [
+    { "competency_id": "GRCENG_FOUND", "title": "Engineering foundations for GRC", "tier": "foundational", "domain_id": "DOMAIN_GRC_ENG" },
+    { "competency_id": "GRCENG_EXEC", "title": "Evidence pipeline implementation", "tier": "intermediate", "domain_id": "DOMAIN_GRC_ENG" },
+    { "competency_id": "GRCENG_LEAD", "title": "Compliance engineering at scale", "tier": "advanced", "domain_id": "DOMAIN_GRC_ENG" }
+  ],
+  "modules": [
+    { "id": "GRCENG_F01", "title": "Introduction to GRC Engineering", "tier": "foundational", "module_type": "core", "competency_ids": ["GRCENG_FOUND"], "prerequisites": [] },
+    { "id": "GRCENG_F02", "title": "Version Control with Git & GitHub for GRC", "tier": "foundational", "module_type": "core", "competency_ids": ["GRCENG_FOUND"], "prerequisites": [{ "module_id": "GRCENG_F01" }] },
+    { "id": "GRCENG_F03", "title": "IaC Fundamentals for Control Implementation (Terraform)", "tier": "foundational", "module_type": "core", "competency_ids": ["GRCENG_FOUND"], "prerequisites": [{ "module_id": "GRCENG_F01" }] },
+    { "id": "GRCENG_F04", "title": "GRC Data Model: Risks, Controls, Evidence, Issues", "tier": "foundational", "module_type": "core", "competency_ids": ["GRCENG_FOUND"], "prerequisites": [{ "module_id": "GRCENG_F01" }] },
+    { "id": "GRCENG_I01", "title": "CI/CD Evidence Pipelines with GitHub Actions", "tier": "intermediate", "module_type": "core", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_F02" }] },
+    { "id": "GRCENG_I02", "title": "Terraform for Security & Compliance Infrastructure", "tier": "intermediate", "module_type": "core", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_F03" }] },
+    { "id": "GRCENG_I03", "title": "Policy-as-Code with OPA & Rego", "tier": "intermediate", "module_type": "core", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_F04" }] },
+    { "id": "GRCENG_I04", "title": "Evidence Ingestion & GRC Integrations (APIs)", "tier": "intermediate", "module_type": "core", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_F04" }] },
+    { "id": "GRCENG_I05", "title": "Continuous Control Monitoring Pipelines", "tier": "intermediate", "module_type": "core", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_I01" }, { "module_id": "AUDIT_I04" }] },
+    { "id": "GRCENG_I06", "title": "Evidence Pipeline Automation", "tier": "intermediate", "module_type": "core", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_I04" }] },
+    { "id": "GRCENG_I07", "title": "Scripting for GRC Automation (Python & Shell)", "tier": "intermediate", "module_type": "depth", "competency_ids": ["GRCENG_EXEC"], "prerequisites": [{ "module_id": "GRCENG_F01" }] },
+    { "id": "GRCENG_A01", "title": "Advanced Terraform Patterns for GRC", "tier": "advanced", "module_type": "core", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_I02" }] },
+    { "id": "GRCENG_A02", "title": "Building GRC Platforms & Dashboards", "tier": "advanced", "module_type": "core", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_I04" }, { "module_id": "GRCENG_I06" }] },
+    { "id": "GRCENG_A03", "title": "Compliance-as-Code at Scale", "tier": "advanced", "module_type": "core", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_I03" }, { "module_id": "GRCENG_I05" }] },
+    { "id": "GRCENG_A04", "title": "GRC Data Engineering & Analytics", "tier": "advanced", "module_type": "depth", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_A02" }] },
+    { "id": "GRCENG_A05", "title": "DevSecOps & Shift-Left GRC", "tier": "advanced", "module_type": "core", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_A01" }] },
+    { "id": "GRCENG_A06", "title": "GRC Platform Architecture & Design", "tier": "advanced", "module_type": "specialization", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_A02" }] },
+    { "id": "GRCENG_A07", "title": "Multi-Cloud Control Normalization", "tier": "advanced", "module_type": "specialization", "competency_ids": ["GRCENG_LEAD"], "prerequisites": [{ "module_id": "GRCENG_A01" }, { "module_id": "CONTROLS_A02" }] },
+    {
+      "id": "GRCENG_CAP",
+      "title": "Capstone: Terraform + GitHub Actions Evidence Pipeline",
+      "tier": "advanced",
+      "module_type": "capstone",
+      "competency_ids": ["GRCENG_LEAD"],
+      "prerequisites": [{ "module_id": "GRCENG_A01" }, { "module_id": "GRCENG_A03" }],
+      "code_challenge": {
+        "format": "code_challenge",
+        "language": "hcl",
+        "scenario_context": "SOC 2 CC6.1 requires encryption at rest and traceable deployment evidence.",
+        "control_mapping": "SOC2 CC6.1 / ISO 27001 A.8.24",
+        "expected_artifact": "Terraform + CI workflow that enforces encrypted storage and emits evidence logs.",
+        "starter_code": "resource \"aws_s3_bucket\" \"audit_logs\" {\n  bucket = \"daily-findings-audit-logs\"\n}\n",
+        "solution_code": "resource \"aws_s3_bucket\" \"audit_logs\" {\n  bucket = \"daily-findings-audit-logs\"\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"audit_logs\" {\n  bucket = aws_s3_bucket.audit_logs.id\n  rule {\n    apply_server_side_encryption_by_default {\n      sse_algorithm     = \"aws:kms\"\n      kms_master_key_id = var.kms_key_arn\n    }\n  }\n}\n",
+        "validation": {
+          "required_patterns": ["server_side_encryption_configuration", "sse_algorithm", "aws:kms"],
+          "forbidden_patterns": ["sse_algorithm = \"AES256\""],
+          "min_occurrences": { "sse_algorithm": 1 }
+        },
+        "hints": [
+          "Use a dedicated encryption configuration resource for S3.",
+          "Choose KMS-managed encryption to satisfy stronger control requirements."
+        ],
+        "explanation": "This enforces customer-managed key encryption and aligns CI evidence to control assertions."
+      }
+    }
+  ]
+}

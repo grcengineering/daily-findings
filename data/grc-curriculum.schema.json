@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dailyfindings.local/schemas/grc-curriculum.schema.json",
+  "title": "GRC Competency Curriculum",
+  "type": "object",
+  "required": ["version", "domains", "paths"],
+  "properties": {
+    "version": { "type": "string" },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Domain" }
+    },
+    "paths": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Path" }
+    }
+  },
+  "$defs": {
+    "Competency": {
+      "type": "object",
+      "required": ["competency_id", "title", "tier", "domain_id"],
+      "properties": {
+        "competency_id": { "type": "string" },
+        "title": { "type": "string" },
+        "tier": { "type": "string", "enum": ["foundational", "intermediate", "advanced"] },
+        "domain_id": { "type": "string" }
+      }
+    },
+    "PrereqRef": {
+      "type": "object",
+      "required": ["module_id"],
+      "properties": {
+        "module_id": { "type": "string" },
+        "recommended": { "type": "boolean", "default": true }
+      }
+    },
+    "CodeChallengeValidation": {
+      "type": "object",
+      "required": ["required_patterns", "forbidden_patterns"],
+      "properties": {
+        "required_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "min_occurrences": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "CodeChallengeItem": {
+      "type": "object",
+      "required": [
+        "format",
+        "language",
+        "scenario_context",
+        "control_mapping",
+        "expected_artifact",
+        "starter_code",
+        "solution_code",
+        "validation",
+        "hints",
+        "explanation"
+      ],
+      "properties": {
+        "format": { "const": "code_challenge" },
+        "language": { "type": "string" },
+        "scenario_context": { "type": "string" },
+        "control_mapping": { "type": "string" },
+        "expected_artifact": { "type": "string" },
+        "starter_code": { "type": "string" },
+        "solution_code": { "type": "string" },
+        "validation": { "$ref": "#/$defs/CodeChallengeValidation" },
+        "hints": { "type": "array", "items": { "type": "string" } },
+        "explanation": { "type": "string" }
+      }
+    },
+    "CapstoneContent": {
+      "type": "object",
+      "required": ["deliverable_prompt", "deliverable_format", "synthesis_questions", "scenario_decisions", "rubric"],
+      "properties": {
+        "deliverable_prompt": { "type": "string" },
+        "deliverable_format": { "type": "string" },
+        "synthesis_questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["question", "guidance"],
+            "properties": {
+              "question": { "type": "string" },
+              "guidance": { "type": "string" }
+            }
+          }
+        },
+        "scenario_decisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["situation", "options", "best_option", "rationale"],
+            "properties": {
+              "situation": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "best_option": { "type": "string" },
+              "rationale": { "type": "string" }
+            }
+          }
+        },
+        "rubric": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["criterion", "excellent", "acceptable", "needs_work"],
+            "properties": {
+              "criterion": { "type": "string" },
+              "excellent": { "type": "string" },
+              "acceptable": { "type": "string" },
+              "needs_work": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Module": {
+      "type": "object",
+      "required": ["id", "title", "tier", "module_type", "competency_ids", "prerequisites"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "tier": { "type": "string", "enum": ["foundational", "intermediate", "advanced"] },
+        "module_type": { "type": "string", "enum": ["core", "depth", "specialization", "capstone"] },
+        "competency_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PrereqRef" }
+        },
+        "code_challenge": { "$ref": "#/$defs/CodeChallengeItem" },
+        "capstone_content": { "$ref": "#/$defs/CapstoneContent" }
+      }
+    },
+    "Domain": {
+      "type": "object",
+      "required": ["domain_id", "name", "slug", "description", "color", "gradient", "icon", "competencies", "modules"],
+      "properties": {
+        "domain_id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "color": { "type": "string" },
+        "gradient": { "type": "string" },
+        "icon": { "type": "string" },
+        "competencies": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Competency" }
+        },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Module" }
+        }
+      }
+    },
+    "Path": {
+      "type": "object",
+      "required": ["path_id", "title", "module_ids"],
+      "properties": {
+        "path_id": { "type": "string" },
+        "title": { "type": "string" },
+        "module_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

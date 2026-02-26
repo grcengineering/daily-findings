@@ -62,14 +62,37 @@ export interface ScenarioContent {
 
 export interface QuizQuestion {
   id: string;
+  format?: "multiple_choice";
   question: string;
   options: string[];
   correctIndex: number;
   explanation: string;
 }
 
+export interface CodeChallengeValidation {
+  required_patterns: string[];
+  forbidden_patterns: string[];
+  min_occurrences?: Record<string, number>;
+}
+
+export interface CodeChallengeQuestion {
+  id: string;
+  format: "code_challenge";
+  language: string;
+  scenario_context: string;
+  control_mapping: string;
+  expected_artifact: string;
+  starter_code: string;
+  solution_code: string;
+  validation: CodeChallengeValidation;
+  hints: string[];
+  explanation: string;
+}
+
+export type AssessmentQuestion = QuizQuestion | CodeChallengeQuestion;
+
 export interface QuizContent {
-  questions: QuizQuestion[];
+  questions: AssessmentQuestion[];
   citations?: Citation[];
   confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
@@ -93,6 +116,24 @@ export interface FullSessionContent {
   lesson: LessonContent;
   scenario: ScenarioContent;
   quiz: QuizContent;
+}
+
+export interface CapstoneContent {
+  deliverable_prompt: string;
+  deliverable_format: string;
+  synthesis_questions: Array<{ question: string; guidance: string }>;
+  scenario_decisions: Array<{
+    situation: string;
+    options: string[];
+    best_option: string;
+    rationale: string;
+  }>;
+  rubric: Array<{
+    criterion: string;
+    excellent: string;
+    acceptable: string;
+    needs_work: string;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,21 +241,39 @@ Key Terms: ${topic.keyTerms.join(", ")}
 Additional Guidance: ${topic.promptHints}
 
 Requirements:
-- Generate exactly 6 multiple-choice questions.
-- Each question must have exactly 4 options (A–D).
-- correctIndex is 0-based (0 = first option, 3 = last option).
-- Provide a clear explanation for the correct answer that cites the specific source (e.g., "Per NIST CSF 2.0, Function: Govern (GV)..." or "ISO 27001:2022 Clause 6.1.2 requires...").
-- Mix difficulty: 2 recall, 2 application, 2 analysis-level questions.
-- Give each question a unique id like "q1", "q2", etc.
+- Generate exactly 6 assessment items.
+- Default format is multiple choice with exactly 4 options (A-D), using 0-based correctIndex.
+- If the topic is engineering-oriented (automation, IaC, pipelines, policy-as-code), include at least one item using format "code_challenge".
+- Every item must include an explanation tied to authoritative control/framework intent.
+- Mix difficulty: 2 recall, 2 application, 2 analysis-level prompts.
+- Give each item a unique id like "q1", "q2", etc.
 
 Respond with ONLY valid JSON matching this schema (no markdown, no code fences):
 {
   "questions": [
     {
       "id": "string",
+      "format": "multiple_choice",
       "question": "string",
       "options": ["string", "string", "string", "string"],
       "correctIndex": number,
+      "explanation": "string"
+    },
+    {
+      "id": "string",
+      "format": "code_challenge",
+      "language": "hcl|yaml|json|python|bash",
+      "scenario_context": "string",
+      "control_mapping": "string",
+      "expected_artifact": "string",
+      "starter_code": "string",
+      "solution_code": "string",
+      "validation": {
+        "required_patterns": ["string"],
+        "forbidden_patterns": ["string"],
+        "min_occurrences": { "string": 1 }
+      },
+      "hints": ["string"],
       "explanation": "string"
     }
   ]
@@ -249,6 +308,48 @@ Respond with ONLY valid JSON matching this schema (no markdown, no code fences):
     { "title": "string", "content": "string", "source": "string" }
   ],
   "whyItMatters": "string"
+}`;
+}
+
+function capstonePrompt(topic: TopicInput): string {
+  return `You are a senior GRC program lead designing a capstone assignment.
+
+Create an applied capstone for:
+Topic: ${topic.title}
+Domain: ${topic.domain}
+Level: ${topic.level}
+Objectives: ${topic.objectives.join("; ")}
+
+Requirements:
+- Provide a realistic deliverable prompt with explicit format guidance.
+- Include 3 synthesis questions that require tradeoff reasoning.
+- Include 3 scenario decision points with options, best option, and rationale.
+- Include a 4-criterion rubric with excellent/acceptable/needs_work expectations.
+- Keep outputs practical and enterprise-oriented.
+
+Respond with ONLY valid JSON (no markdown, no code fences):
+{
+  "deliverable_prompt": "string",
+  "deliverable_format": "string",
+  "synthesis_questions": [
+    { "question": "string", "guidance": "string" }
+  ],
+  "scenario_decisions": [
+    {
+      "situation": "string",
+      "options": ["string", "string", "string"],
+      "best_option": "string",
+      "rationale": "string"
+    }
+  ],
+  "rubric": [
+    {
+      "criterion": "string",
+      "excellent": "string",
+      "acceptable": "string",
+      "needs_work": "string"
+    }
+  ]
 }`;
 }
 
@@ -626,7 +727,7 @@ async function generateAndVerifySection<T>(
   config: SectionConfig,
   topic: TopicInput
 ): Promise<CallClaudeResult<T> & { verification: VerificationResult }> {
-  let prompt = config.promptFn(topic);
+  const prompt = config.promptFn(topic);
   let result = await callClaudeWithSearch<T>(prompt, config.maxSearches);
   let contentJson = JSON.stringify(result.content);
   let verification = await verifyContent(
@@ -776,4 +877,17 @@ export async function generateFullSession(
   ]);
 
   return { lesson, scenario, quiz };
+}
+
+export async function generateCapstone(
+  topic: TopicInput,
+  domain: string,
+  level: string
+): Promise<CapstoneContent> {
+  const input: TopicInput = { ...topic, domain, level };
+  const { content } = await callClaudeWithSearch<CapstoneContent>(
+    capstonePrompt(input),
+    6
+  );
+  return content;
 }

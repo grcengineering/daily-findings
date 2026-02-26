@@ -54,9 +54,13 @@ model SessionContent {
   domain          String
   topic           String
   level           String
+  moduleType      String   @default("core")
+  competencyIds   String   @default("[]")
+  prerequisites   String   @default("[]")
   lessonContent   String
   scenarioContent String
   quizContent     String
+  capstoneContent String?
   confidenceScore Int?
   generatedAt     DateTime @default(now())
 }

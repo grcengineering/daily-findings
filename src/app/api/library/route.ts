@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAllTopics } from "@/lib/curriculum";
+import { getAllTopics, getBridgeTrack } from "@/lib/curriculum";
 
 export async function GET() {
   try {
     const allTopics = getAllTopics();
+    const allIds = new Set(allTopics.map((topic) => topic.id));
     
     const generatedSessions = await prisma.sessionContent.findMany({
       select: { topicId: true },
@@ -30,6 +31,9 @@ export async function GET() {
       levels: Record<string, Array<{
         id: string;
         title: string;
+        moduleType: "core" | "depth" | "specialization" | "capstone";
+        prerequisites: string[];
+        competencyIds: string[];
         available: boolean;
         completed: boolean;
         bestScore: number;
@@ -49,14 +53,28 @@ export async function GET() {
       domains[topic.domain].levels[topic.level].push({
         id: topic.id,
         title: topic.title,
+        moduleType: topic.moduleType,
+        prerequisites: topic.prerequisites.filter((id) => allIds.has(id)),
+        competencyIds: topic.competencyIds,
         available: generatedSet.has(topic.id),
         completed: completion?.completed ?? false,
         bestScore: completion?.bestScore ?? 0,
         attempts: completion?.attempts ?? 0,
       });
     }
+
+    const moduleOrder = { core: 0, depth: 1, specialization: 2, capstone: 3 } as const;
+    for (const domain of Object.values(domains)) {
+      for (const levelTopics of Object.values(domain.levels)) {
+        levelTopics.sort((a, b) => {
+          const typeDiff = moduleOrder[a.moduleType] - moduleOrder[b.moduleType];
+          if (typeDiff !== 0) return typeDiff;
+          return a.title.localeCompare(b.title);
+        });
+      }
+    }
     
-    return NextResponse.json({ domains });
+    return NextResponse.json({ domains, paths: getBridgeTrack() });
   } catch (error) {
     console.error("Failed to load library:", error);
     return NextResponse.json({ error: "Failed to load library" }, { status: 500 });

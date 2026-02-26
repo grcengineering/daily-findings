@@ -1,0 +1,33 @@
+{
+  "domain_id": "DOMAIN_CONTROLS",
+  "name": "Security Controls & Architecture",
+  "slug": "controls",
+  "description": "Control design, architecture, threat modeling, and automation.",
+  "color": "#14b8a6",
+  "gradient": "from-teal-500 to-cyan-600",
+  "icon": "ShieldCheck",
+  "competencies": [
+    { "competency_id": "CTRL_FOUND", "title": "Control fundamentals", "tier": "foundational", "domain_id": "DOMAIN_CONTROLS" },
+    { "competency_id": "CTRL_EXEC", "title": "Control architecture and review", "tier": "intermediate", "domain_id": "DOMAIN_CONTROLS" },
+    { "competency_id": "CTRL_LEAD", "title": "Advanced control strategy and automation", "tier": "advanced", "domain_id": "DOMAIN_CONTROLS" }
+  ],
+  "modules": [
+    { "id": "CONTROLS_F01", "title": "Security Controls Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["CTRL_FOUND"], "prerequisites": [] },
+    { "id": "CONTROLS_F02", "title": "Control Types: Preventive, Detective, Corrective", "tier": "foundational", "module_type": "core", "competency_ids": ["CTRL_FOUND"], "prerequisites": [{ "module_id": "CONTROLS_F01" }] },
+    { "id": "CONTROLS_F03", "title": "Access Control Principles", "tier": "foundational", "module_type": "core", "competency_ids": ["CTRL_FOUND"], "prerequisites": [{ "module_id": "CONTROLS_F01" }] },
+    { "id": "CONTROLS_F04", "title": "Network Security Controls", "tier": "foundational", "module_type": "core", "competency_ids": ["CTRL_FOUND"], "prerequisites": [{ "module_id": "CONTROLS_F01" }] },
+    { "id": "CONTROLS_F05", "title": "Endpoint & Data Protection Controls", "tier": "foundational", "module_type": "depth", "competency_ids": ["CTRL_FOUND"], "prerequisites": [{ "module_id": "CONTROLS_F01" }] },
+    { "id": "CONTROLS_I01", "title": "Control Design & Implementation", "tier": "intermediate", "module_type": "core", "competency_ids": ["CTRL_EXEC"], "prerequisites": [{ "module_id": "CONTROLS_F02" }] },
+    { "id": "CONTROLS_I02", "title": "Zero Trust Architecture Principles", "tier": "intermediate", "module_type": "core", "competency_ids": ["CTRL_EXEC"], "prerequisites": [{ "module_id": "CONTROLS_F03" }] },
+    { "id": "CONTROLS_I03", "title": "Cloud Security Controls (AWS, Azure, GCP)", "tier": "intermediate", "module_type": "core", "competency_ids": ["CTRL_EXEC"], "prerequisites": [{ "module_id": "CONTROLS_I01" }] },
+    { "id": "CONTROLS_I04", "title": "Identity & Access Management (IAM)", "tier": "intermediate", "module_type": "core", "competency_ids": ["CTRL_EXEC"], "prerequisites": [{ "module_id": "CONTROLS_F03" }] },
+    { "id": "CONTROLS_I05", "title": "Security Architecture Review Process", "tier": "intermediate", "module_type": "core", "competency_ids": ["CTRL_EXEC"], "prerequisites": [{ "module_id": "CONTROLS_I01" }] },
+    { "id": "CONTROLS_I06", "title": "Threat Modeling for Compliance Controls", "tier": "intermediate", "module_type": "core", "competency_ids": ["CTRL_EXEC"], "prerequisites": [{ "module_id": "CONTROLS_I01" }, { "module_id": "RISK_F03" }] },
+    { "id": "CONTROLS_A01", "title": "Control Effectiveness Measurement", "tier": "advanced", "module_type": "core", "competency_ids": ["CTRL_LEAD"], "prerequisites": [{ "module_id": "CONTROLS_I05" }, { "module_id": "AUDIT_I04" }] },
+    { "id": "CONTROLS_A02", "title": "Advanced Cloud Security Architecture", "tier": "advanced", "module_type": "core", "competency_ids": ["CTRL_LEAD"], "prerequisites": [{ "module_id": "CONTROLS_I03" }] },
+    { "id": "CONTROLS_A03", "title": "Security for Regulated Industries", "tier": "advanced", "module_type": "depth", "competency_ids": ["CTRL_LEAD"], "prerequisites": [{ "module_id": "CONTROLS_A02" }, { "module_id": "COMP_I01" }] },
+    { "id": "CONTROLS_A04", "title": "Defense in Depth Advanced", "tier": "advanced", "module_type": "depth", "competency_ids": ["CTRL_LEAD"], "prerequisites": [{ "module_id": "CONTROLS_A02" }] },
+    { "id": "CONTROLS_A05", "title": "Security Controls Automation", "tier": "advanced", "module_type": "core", "competency_ids": ["CTRL_LEAD"], "prerequisites": [{ "module_id": "CONTROLS_A01" }] },
+    { "id": "CONTROLS_CAP", "title": "Capstone: Control-to-Framework Mapping & Gap Analysis", "tier": "advanced", "module_type": "capstone", "competency_ids": ["CTRL_LEAD"], "prerequisites": [{ "module_id": "CONTROLS_A01" }] }
+  ]
+}

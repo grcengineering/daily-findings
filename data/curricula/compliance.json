@@ -1,0 +1,31 @@
+{
+  "domain_id": "DOMAIN_COMPLIANCE",
+  "name": "Compliance & Regulatory",
+  "slug": "compliance",
+  "description": "Regulatory program design, compliance execution, and operational monitoring.",
+  "color": "#10b981",
+  "gradient": "from-emerald-500 to-teal-600",
+  "icon": "Scale",
+  "competencies": [
+    { "competency_id": "COMP_FOUND", "title": "Compliance fundamentals", "tier": "foundational", "domain_id": "DOMAIN_COMPLIANCE" },
+    { "competency_id": "COMP_EXEC", "title": "Regulatory execution and monitoring", "tier": "intermediate", "domain_id": "DOMAIN_COMPLIANCE" },
+    { "competency_id": "COMP_STRAT", "title": "Strategic compliance leadership", "tier": "advanced", "domain_id": "DOMAIN_COMPLIANCE" }
+  ],
+  "modules": [
+    { "id": "COMP_F01", "title": "Compliance Program Fundamentals", "tier": "foundational", "module_type": "core", "competency_ids": ["COMP_FOUND"], "prerequisites": [] },
+    { "id": "COMP_F02", "title": "US Regulatory Landscape Overview", "tier": "foundational", "module_type": "core", "competency_ids": ["COMP_FOUND"], "prerequisites": [{ "module_id": "COMP_F01" }] },
+    { "id": "COMP_F03", "title": "PCI DSS Fundamentals", "tier": "foundational", "module_type": "depth", "competency_ids": ["COMP_FOUND"], "prerequisites": [{ "module_id": "COMP_F01" }] },
+    { "id": "COMP_F04", "title": "HIPAA Compliance Basics", "tier": "foundational", "module_type": "depth", "competency_ids": ["COMP_FOUND"], "prerequisites": [{ "module_id": "COMP_F01" }] },
+    { "id": "COMP_F05", "title": "FedRAMP & Government Compliance", "tier": "foundational", "module_type": "specialization", "competency_ids": ["COMP_FOUND"], "prerequisites": [{ "module_id": "COMP_F02" }] },
+    { "id": "COMP_I01", "title": "SOX Compliance & IT Controls", "tier": "intermediate", "module_type": "core", "competency_ids": ["COMP_EXEC"], "prerequisites": [{ "module_id": "COMP_F02" }] },
+    { "id": "COMP_I02", "title": "PCI DSS v4.0 Deep Dive", "tier": "intermediate", "module_type": "depth", "competency_ids": ["COMP_EXEC"], "prerequisites": [{ "module_id": "COMP_F03" }] },
+    { "id": "COMP_I03", "title": "HIPAA Technical Safeguards", "tier": "intermediate", "module_type": "depth", "competency_ids": ["COMP_EXEC"], "prerequisites": [{ "module_id": "COMP_F04" }] },
+    { "id": "COMP_I04", "title": "Compliance Monitoring Programs", "tier": "intermediate", "module_type": "core", "competency_ids": ["COMP_EXEC"], "prerequisites": [{ "module_id": "COMP_I01" }] },
+    { "id": "COMP_I05", "title": "Regulatory Intelligence & Change Ops", "tier": "intermediate", "module_type": "core", "competency_ids": ["COMP_EXEC"], "prerequisites": [{ "module_id": "COMP_F02" }] },
+    { "id": "COMP_A01", "title": "Multi-Jurisdictional Compliance Strategy", "tier": "advanced", "module_type": "core", "competency_ids": ["COMP_STRAT"], "prerequisites": [{ "module_id": "COMP_I04" }, { "module_id": "COMP_I05" }] },
+    { "id": "COMP_A02", "title": "Compliance Automation & Continuous Monitoring", "tier": "advanced", "module_type": "core", "competency_ids": ["COMP_STRAT"], "prerequisites": [{ "module_id": "COMP_I04" }] },
+    { "id": "COMP_A03", "title": "Regulatory Examination Preparation", "tier": "advanced", "module_type": "depth", "competency_ids": ["COMP_STRAT"], "prerequisites": [{ "module_id": "COMP_A01" }] },
+    { "id": "COMP_A04", "title": "Building a Compliance Culture", "tier": "advanced", "module_type": "depth", "competency_ids": ["COMP_STRAT"], "prerequisites": [{ "module_id": "COMP_A01" }] },
+    { "id": "COMP_CAP", "title": "Capstone: Compliance Program Roadmap & Regulatory Prioritization", "tier": "advanced", "module_type": "capstone", "competency_ids": ["COMP_STRAT"], "prerequisites": [{ "module_id": "COMP_A01" }] }
+  ]
+}

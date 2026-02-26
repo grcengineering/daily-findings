@@ -13,6 +13,7 @@ import { LessonView } from "@/components/session/LessonView";
 import { ScenarioView } from "@/components/session/ScenarioView";
 import { QuizView } from "@/components/session/QuizView";
 import { SessionComplete } from "@/components/session/SessionComplete";
+import { CapstoneSection } from "@/components/session/CapstoneSection";
 
 interface Citation {
   url: string;
@@ -73,9 +74,29 @@ interface SessionData {
   domain: string;
   topic: string;
   level: string;
+  moduleType: "core" | "depth" | "specialization" | "capstone";
+  competencyIds: string[];
+  prerequisites: string[];
   lesson: LessonContent;
   scenario: ScenarioContent;
   quiz: QuizContent;
+  capstone?: {
+    deliverable_prompt: string;
+    deliverable_format: string;
+    synthesis_questions: Array<{ question: string; guidance: string }>;
+    scenario_decisions: Array<{
+      situation: string;
+      options: string[];
+      best_option: string;
+      rationale: string;
+    }>;
+    rubric: Array<{
+      criterion: string;
+      excellent: string;
+      acceptable: string;
+      needs_work: string;
+    }>;
+  } | null;
   confidenceScore: number | null;
   completed: boolean;
   quizScore: number | null;
@@ -112,6 +133,7 @@ function LoadingSkeleton() {
 function SessionPageContent() {
   const searchParams = useSearchParams();
   const topicId = searchParams.get("topicId");
+  const overridePrereq = searchParams.get("overridePrereq");
   const [session, setSession] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,20 +143,33 @@ function SessionPageContent() {
   const [quizTotal, setQuizTotal] = useState(0);
   const [completionStats, setCompletionStats] = useState<CompletionStats | null>(null);
   const [sessionDone, setSessionDone] = useState(false);
+  const sectionNames =
+    session?.moduleType === "capstone"
+      ? ["Lesson", "Scenario", "Quiz", "Capstone"]
+      : ["Lesson", "Scenario", "Quiz"];
 
   useEffect(() => {
     async function load() {
       try {
         const url = topicId
-          ? `/api/session/generate?topicId=${encodeURIComponent(topicId)}`
+          ? `/api/session/generate?topicId=${encodeURIComponent(topicId)}${
+              overridePrereq === "1" ? "&overridePrereq=1" : ""
+            }`
           : "/api/session/generate";
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to load session");
+        if (!res.ok) {
+          const errorPayload = await res.json().catch(() => null);
+          throw new Error(
+            errorPayload?.error ?? "Failed to load session"
+          );
+        }
         const data: SessionData = await res.json();
         setSession(data);
 
         if (data.completed) {
-          setCompletedSections([0, 1, 2]);
+          setCompletedSections(
+            data.moduleType === "capstone" ? [0, 1, 2, 3] : [0, 1, 2]
+          );
           setSessionDone(true);
           setQuizScore(data.quizScore ?? 0);
           setQuizTotal(data.quizTotal ?? 0);
@@ -146,18 +181,22 @@ function SessionPageContent() {
       }
     }
     load();
-  }, [topicId]);
+  }, [overridePrereq, topicId]);
 
   const completeSection = useCallback(
     (sectionIdx: number) => {
       setCompletedSections((prev) =>
         prev.includes(sectionIdx) ? prev : [...prev, sectionIdx]
       );
-      if (sectionIdx < 2) {
+      if (session?.moduleType === "capstone") {
+        if (sectionIdx < 3) {
+          setCurrentSection(sectionIdx + 1);
+        }
+      } else if (sectionIdx < 2) {
         setCurrentSection(sectionIdx + 1);
       }
     },
-    []
+    [session]
   );
 
   const handleQuizComplete = useCallback(
@@ -167,9 +206,10 @@ function SessionPageContent() {
       setCompletedSections((prev) =>
         prev.includes(2) ? prev : [...prev, 2]
       );
-      setSessionDone(true);
-
-      if (session) {
+      if (session?.moduleType === "capstone") {
+        setCurrentSection(3);
+      } else if (session) {
+        setSessionDone(true);
         try {
           const res = await fetch("/api/session/complete", {
             method: "POST",
@@ -191,6 +231,30 @@ function SessionPageContent() {
     },
     [session]
   );
+
+  const handleCapstoneComplete = useCallback(async () => {
+    setCompletedSections((prev) => (prev.includes(3) ? prev : [...prev, 3]));
+    if (session) {
+      try {
+        const res = await fetch("/api/session/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topicId: session.topicId,
+            quizScore,
+            quizTotal,
+          }),
+        });
+        if (res.ok) {
+          const stats: CompletionStats = await res.json();
+          setCompletionStats(stats);
+        }
+      } catch {
+        // Non-blocking — stats will refresh on next visit
+      }
+    }
+    setSessionDone(true);
+  }, [quizScore, quizTotal, session]);
 
   const handleSectionClick = useCallback(
     (idx: number) => {
@@ -272,6 +336,7 @@ function SessionPageContent() {
       <SessionProgress
         currentSection={currentSection}
         completedSections={completedSections}
+        sectionNames={sectionNames}
         onSectionClick={handleSectionClick}
       />
 
@@ -320,6 +385,18 @@ function SessionPageContent() {
               quiz={session.quiz}
               onComplete={handleQuizComplete}
             />
+          </motion.div>
+        )}
+
+        {currentSection === 3 && session.capstone && (
+          <motion.div
+            key="capstone"
+            variants={slideInRight}
+            initial="hidden"
+            animate="visible"
+            exit={{ opacity: 0, x: -30 }}
+          >
+            <CapstoneSection capstone={session.capstone} onComplete={handleCapstoneComplete} />
           </motion.div>
         )}
       </AnimatePresence>

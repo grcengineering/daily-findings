@@ -1,4 +1,16 @@
-import curriculumData from "../../data/curriculum.json";
+import privacy from "../../data/curricula/privacy.json";
+import frameworks from "../../data/curricula/frameworks.json";
+import risk from "../../data/curricula/risk.json";
+import compliance from "../../data/curricula/compliance.json";
+import audit from "../../data/curricula/audit.json";
+import policy from "../../data/curricula/policy.json";
+import incident from "../../data/curricula/incident.json";
+import tprm from "../../data/curricula/tprm.json";
+import controls from "../../data/curricula/controls.json";
+import dataGovernance from "../../data/curricula/data-governance.json";
+import grcEngineering from "../../data/curricula/grc-engineering.json";
+import aiGovernance from "../../data/curricula/ai-governance.json";
+import pathsData from "../../data/curricula/paths.json";
 
 export interface TopicInfo {
   id: string;
@@ -8,32 +20,45 @@ export interface TopicInfo {
   promptHints: string;
   domain: string;
   level: string;
+  moduleType: "core" | "depth" | "specialization" | "capstone";
+  competencyIds: string[];
+  prerequisites: string[];
 }
 
-interface CurriculumTopic {
+interface CurriculumModule {
   id: string;
   title: string;
-  objectives: string[];
-  keyTerms: string[];
-  promptHints: string;
+  tier: "foundational" | "intermediate" | "advanced";
+  module_type: TopicInfo["moduleType"];
+  competency_ids: string[];
+  prerequisites: Array<{ module_id: string }>;
 }
 
-interface CurriculumLevel {
-  name: string;
-  topics: CurriculumTopic[];
-}
-
-interface CurriculumDomain {
+interface CurriculumDomainFile {
+  domain_id: string;
   name: string;
   slug: string;
   description: string;
-  levels: CurriculumLevel[];
+  color: string;
+  gradient: string;
+  icon: string;
+  modules: CurriculumModule[];
 }
 
-interface Curriculum {
-  version: string;
-  domains: CurriculumDomain[];
-}
+const DOMAIN_FILES: CurriculumDomainFile[] = [
+  privacy as CurriculumDomainFile,
+  frameworks as CurriculumDomainFile,
+  risk as CurriculumDomainFile,
+  compliance as CurriculumDomainFile,
+  audit as CurriculumDomainFile,
+  policy as CurriculumDomainFile,
+  incident as CurriculumDomainFile,
+  tprm as CurriculumDomainFile,
+  controls as CurriculumDomainFile,
+  dataGovernance as CurriculumDomainFile,
+  grcEngineering as CurriculumDomainFile,
+  aiGovernance as CurriculumDomainFile,
+];
 
 const LEVEL_ORDER: Record<string, number> = {
   foundational: 0,
@@ -45,21 +70,54 @@ function levelRank(level: string): number {
   return LEVEL_ORDER[level.toLowerCase()] ?? 99;
 }
 
-function flattenCurriculum(data: Curriculum): TopicInfo[] {
+const MODULE_TYPE_ORDER: Record<TopicInfo["moduleType"], number> = {
+  core: 0,
+  depth: 1,
+  specialization: 2,
+  capstone: 3,
+};
+
+const LEVEL_LABEL: Record<CurriculumModule["tier"], string> = {
+  foundational: "Foundational",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+};
+
+function toKeyTerms(title: string): string[] {
+  return title
+    .split(/[&,:()/-]/g)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 2)
+    .slice(0, 4);
+}
+
+function defaultObjectives(title: string, domain: string): string[] {
+  return [
+    `Explain the core concepts in ${title}.`,
+    `Apply ${title} techniques to practical ${domain} decisions.`,
+    `Evaluate tradeoffs and communicate recommendations using ${title}.`,
+  ];
+}
+
+function flattenCurriculum(data: CurriculumDomainFile[]): TopicInfo[] {
   const topics: TopicInfo[] = [];
-  for (const domain of data.domains) {
-    for (const lvl of domain.levels) {
-      for (const t of lvl.topics) {
-        topics.push({
-          id: t.id,
-          title: t.title,
-          objectives: t.objectives,
-          keyTerms: t.keyTerms,
-          promptHints: t.promptHints,
-          domain: domain.name,
-          level: lvl.name,
-        });
-      }
+  for (const domain of data) {
+    for (const domainModule of domain.modules) {
+      topics.push({
+        id: domainModule.id,
+        title: domainModule.title,
+        objectives: defaultObjectives(domainModule.title, domain.name),
+        keyTerms: toKeyTerms(domainModule.title),
+        promptHints:
+          domainModule.module_type === "capstone"
+            ? "Include deliverable quality criteria and applied scenario decisions."
+            : "Focus on practical implementation with one realistic enterprise example.",
+        domain: domain.name,
+        level: LEVEL_LABEL[domainModule.tier],
+        moduleType: domainModule.module_type,
+        competencyIds: domainModule.competency_ids ?? [],
+        prerequisites: (domainModule.prerequisites ?? []).map((p) => p.module_id),
+      });
     }
   }
   return topics;
@@ -69,9 +127,13 @@ let cachedTopics: TopicInfo[] | null = null;
 
 export function getAllTopics(): TopicInfo[] {
   if (!cachedTopics) {
-    cachedTopics = flattenCurriculum(curriculumData as unknown as Curriculum);
+    cachedTopics = flattenCurriculum(DOMAIN_FILES);
   }
   return [...cachedTopics];
+}
+
+export function getBridgeTrack() {
+  return (pathsData as { paths: unknown[] }).paths;
 }
 
 /**
@@ -99,10 +161,22 @@ export function getNextTopic(
     throw new Error("No topics available in curriculum");
   }
 
-  remaining.sort((a, b) => levelRank(a.level) - levelRank(b.level));
+  const meetsPrereqs = (topic: TopicInfo) =>
+    topic.prerequisites.every((prereqId) => completed.has(prereqId));
+
+  const eligible = remaining.filter(meetsPrereqs);
+  const pool = eligible.length > 0 ? eligible : remaining;
+
+  pool.sort((a, b) => {
+    const levelDiff = levelRank(a.level) - levelRank(b.level);
+    if (levelDiff !== 0) return levelDiff;
+    const moduleDiff = MODULE_TYPE_ORDER[a.moduleType] - MODULE_TYPE_ORDER[b.moduleType];
+    if (moduleDiff !== 0) return moduleDiff;
+    return a.title.localeCompare(b.title);
+  });
 
   if (lastDomain) {
-    const differentDomain = remaining.filter(
+    const differentDomain = pool.filter(
       (t) => t.domain.toLowerCase() !== lastDomain.toLowerCase()
     );
     if (differentDomain.length > 0) {
@@ -110,7 +184,7 @@ export function getNextTopic(
     }
   }
 
-  return remaining[0];
+  return pool[0];
 }
 
 /**
@@ -153,8 +227,7 @@ export function getDomainProgress(): Record<string, { total: number; slug: strin
   const all = getAllTopics();
   const result: Record<string, { total: number; slug: string }> = {};
 
-  const curriculum = curriculumData as unknown as Curriculum;
-  for (const domain of curriculum.domains) {
+  for (const domain of DOMAIN_FILES) {
     const topicsInDomain = all.filter((t) => t.domain === domain.name);
     result[domain.name] = {
       total: topicsInDomain.length,
@@ -163,4 +236,14 @@ export function getDomainProgress(): Record<string, { total: number; slug: strin
   }
 
   return result;
+}
+
+export function getMissingPrerequisites(
+  topicId: string,
+  completedTopicIds: string[]
+): string[] {
+  const topic = getTopicById(topicId);
+  if (!topic) return [];
+  const completed = new Set(completedTopicIds);
+  return topic.prerequisites.filter((id) => !completed.has(id));
 }

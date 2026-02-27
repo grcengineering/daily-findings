@@ -16,7 +16,8 @@ Release runbook for Daily Findings desktop builds (macOS + Windows). For install
 
 ## Secrets (Optional)
 
-Set these in Settings → Secrets and variables → Actions to enable signing/notarization. The workflow runs successfully without them (unsigned builds).
+Set these in Settings -> Secrets and variables -> Actions to enable signing/notarization.
+Manual desktop builds can run without these secrets (unsigned), but tag releases (`v*`) now require the full macOS signing/notarization set and will fail fast if they are missing.
 
 | Secret | Platform | Purpose |
 |--------|----------|---------|
@@ -45,7 +46,7 @@ Desktop jobs (`build-desktop`) run only if the quality gate passes.
 
 After a successful run:
 
-- **daily-findings-macos** / **daily-findings-windows**: Bundle files (app, dmg, nsis, msi)
+- **daily-findings-macos** / **daily-findings-windows**: Bundle files (dmg, nsis, msi)
 - **daily-findings-macos-checksums** / **daily-findings-windows-checksums**: `CHECKSUMS.txt` (SHA256)
 
 ## Artifact Verification
@@ -63,6 +64,8 @@ After a successful run:
 4. If you extract artifacts to a different folder structure, run checksum generation from that exact extracted layout before comparing.
 5. For signed builds, CI also verifies signatures:
    - macOS: `codesign --verify --deep --strict`
+   - macOS DMG contents: mounted app re-verified with `codesign --verify --deep --strict`
+   - macOS notarization: `xcrun stapler validate` and `spctl -a -vv --type open`
    - Windows: `signtool verify /pa`
 
 ## Troubleshooting

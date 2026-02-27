@@ -17,6 +17,7 @@ jobs:
       DATABASE_URL: file:./prisma/dev.db
       HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
       HAS_APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD != '' }}
+      HAS_APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
       HAS_APPLE_NOTARY_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
       HAS_APPLE_NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
       HAS_APPLE_NOTARY_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
@@ -58,6 +59,29 @@ jobs:
           npx wait-on http://127.0.0.1:3199 --timeout 60000
           npm run qa
 
+      - name: Validate release signing prerequisites
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          missing=0
+          for required in \
+            HAS_APPLE_CERTIFICATE \
+            HAS_APPLE_CERTIFICATE_PASSWORD \
+            HAS_APPLE_SIGNING_IDENTITY \
+            HAS_APPLE_NOTARY_APPLE_ID \
+            HAS_APPLE_NOTARY_TEAM_ID \
+            HAS_APPLE_NOTARY_PASSWORD
+          do
+            value=$(printenv "$required")
+            if [ "$value" != "true" ]; then
+              echo "Missing required secret for signed/notarized macOS release: $required"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Tag releases require signing/notarization secrets."
+            exit 1
+          fi
+
   build-desktop:
     name: Build on ${{ matrix.os }}
     needs: quality-gate
@@ -87,6 +111,14 @@ jobs:
     # Windows: WIN_SIGN_CERT (base64-encoded certificate), WIN_SIGN_PASSWORD
     env:
       DATABASE_URL: file:./prisma/dev.db
+      HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD != '' }}
+      HAS_APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
+      HAS_APPLE_NOTARY_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+      HAS_APPLE_NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+      HAS_APPLE_NOTARY_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+      HAS_WIN_SIGN_CERT: ${{ secrets.WIN_SIGN_CERT != '' }}
+      HAS_WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD != '' }}
 
     steps:
       - name: Checkout
@@ -110,7 +142,7 @@ jobs:
           npm run library:seed:expanded
 
       - name: Import Apple signing certificate (optional)
-        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true'
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true' && env.HAS_APPLE_SIGNING_IDENTITY == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -118,11 +150,14 @@ jobs:
           echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/codesign.p12
           security create-keychain -p "" build.keychain
           security default-keychain -s build.keychain
+          security list-keychains -d user -s build.keychain login.keychain
           security unlock-keychain -p "" build.keychain
           security import /tmp/codesign.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
       - name: Build desktop bundles
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
 
       - name: Sign Windows installers (optional)
@@ -153,7 +188,7 @@ jobs:
           }
 
       - name: Notarize macOS DMG (optional)
-        if: matrix.os == 'macos-latest' && env.HAS_APPLE_NOTARY_APPLE_ID == 'true' && env.HAS_APPLE_NOTARY_TEAM_ID == 'true' && env.HAS_APPLE_NOTARY_PASSWORD == 'true' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true'
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_NOTARY_APPLE_ID == 'true' && env.HAS_APPLE_NOTARY_TEAM_ID == 'true' && env.HAS_APPLE_NOTARY_PASSWORD == 'true' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true' && env.HAS_APPLE_SIGNING_IDENTITY == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -161,7 +196,7 @@ jobs:
         run: node scripts/notarize-macos.mjs
 
       - name: Verify macOS signatures/notarization (optional)
-        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true'
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true' && env.HAS_APPLE_SIGNING_IDENTITY == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -172,8 +207,17 @@ jobs:
           if [ -n "$APP_PATH" ]; then
             codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           fi
+          if [ -n "$DMG_PATH" ]; then
+            MOUNT_POINT=$(hdiutil attach "$DMG_PATH" -nobrowse | awk '/\/Volumes\// {print substr($0, index($0, "/Volumes/")); exit}')
+            APP_IN_DMG=$(ls -1 "$MOUNT_POINT"/*.app 2>/dev/null | head -n 1 || true)
+            if [ -n "$APP_IN_DMG" ]; then
+              codesign --verify --deep --strict --verbose=2 "$APP_IN_DMG"
+            fi
+            hdiutil detach "$MOUNT_POINT"
+          fi
           if [ -n "$DMG_PATH" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
             xcrun stapler validate "$DMG_PATH"
+            spctl -a -vv --type open "$DMG_PATH"
           fi
 
       - name: Verify Windows signatures (optional)
@@ -262,7 +306,8 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            release-assets/daily-findings-macos/**/*
-            release-assets/daily-findings-windows/**/*
+            release-assets/daily-findings-macos/dmg/*.dmg
+            release-assets/daily-findings-windows/nsis/*.exe
+            release-assets/daily-findings-windows/msi/*.msi
             release-assets/publish/daily-findings-macos-CHECKSUMS.txt
             release-assets/publish/daily-findings-windows-CHECKSUMS.txt

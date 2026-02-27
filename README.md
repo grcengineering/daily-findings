@@ -221,8 +221,9 @@ Notes:
 
 Desktop builds are produced by an automated workflow that runs a quality gate (lint, curriculum validation, build, QA) before packaging. Releases can be triggered manually or by pushing a version tag (e.g. `v0.1.0`).
 
-- Manual trigger uploads build artifacts to the workflow run.
-- Tag trigger (`v*`) uploads artifacts and also publishes a GitHub Release with attached installers and checksums.
+- Manual trigger uploads build artifacts to the workflow run (can be unsigned).
+- Tag trigger (`v*`) uploads artifacts and publishes a GitHub Release with attached installers (`.dmg`, `.exe`, `.msi`) plus checksums.
+- Tag-triggered releases now require macOS signing + notarization secrets; if missing, the workflow fails before packaging.
 
 For full details, prerequisites, and troubleshooting, see [DISTRIBUTION.md](DISTRIBUTION.md).
 
@@ -230,7 +231,9 @@ For full details, prerequisites, and troubleshooting, see [DISTRIBUTION.md](DIST
 
 ## Signed vs Unsigned Artifacts
 
-Builds run successfully with or without code signing. When signing secrets are configured, macOS artifacts are notarized and Windows installers are signed. Without them, artifacts are unsigned. Unsigned builds are suitable for internal testing; for public distribution, configure signing to avoid security warnings and gatekeeper prompts. See [DISTRIBUTION.md](DISTRIBUTION.md) for required secrets.
+Manual builds run successfully with or without code signing. When signing secrets are configured, macOS artifacts are notarized and Windows installers are signed. Unsigned builds are suitable for internal testing.
+
+For public distribution, use a tag release (`v*`), which now enforces signed/notarized macOS output before publish. See [DISTRIBUTION.md](DISTRIBUTION.md) for required secrets.
 
 ---
 

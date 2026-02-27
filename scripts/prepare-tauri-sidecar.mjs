@@ -52,13 +52,7 @@ function resolveNodeArchive() {
       extractedFolderName: `node-${nodeVersion}-win-${arch}`,
       nodeBinaryRelativePath: "node.exe",
       extract: async (archivePath, extractRoot) => {
-        await execFileAsync("powershell", [
-          "-NoProfile",
-          "-Command",
-          "param([string]$archive,[string]$dest) Expand-Archive -LiteralPath $archive -DestinationPath $dest -Force",
-          archivePath,
-          extractRoot,
-        ]);
+        await execFileAsync("tar", ["-xf", archivePath, "-C", extractRoot]);
       },
     };
   }

@@ -268,32 +268,6 @@ npm run tauri:build:clean
 
 ---
 
-## Git Operations (Repository Onboarding)
-
-Target remote:
-
-- `https://github.com/docker-grc/arc-learning-platform.git`
-
-This local repo is configured to use that remote as `origin`.
-
-Useful commands:
-
-```bash
-git remote -v
-git fetch origin
-git status
-```
-
-When ready to publish:
-
-```bash
-git add .
-git commit -m "..."
-git push -u origin main
-```
-
----
-
 ## Security & Privacy
 
 - Do not commit API keys or local secret files.

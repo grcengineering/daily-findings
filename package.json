@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "doctor": "node scripts/doctor.mjs",
+    "doctor:tauri": "node scripts/doctor.mjs --tauri",
     "qa": "node scripts/qa-playwright.mjs",
     "test:e2e": "node scripts/qa-playwright.mjs",
     "test:ci": "npm run curriculum:validate && npm run lint && npm run qa",
@@ -19,8 +21,8 @@
     "tauri:dev": "tauri dev",
     "tauri:prepare": "npm run build && node scripts/prepare-tauri-sidecar.mjs",
     "tauri:prepare:clean": "cross-env TAURI_CLEAN_SHARE_BUILD=1 npm run build && node scripts/prepare-tauri-sidecar.mjs",
-    "tauri:build": "cross-env CI=true tauri build",
-    "tauri:build:clean": "cross-env TAURI_CLEAN_SHARE_BUILD=1 CI=true tauri build"
+    "tauri:build": "npm run doctor:tauri && cross-env CI=true tauri build",
+    "tauri:build:clean": "npm run doctor:tauri && cross-env TAURI_CLEAN_SHARE_BUILD=1 CI=true tauri build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

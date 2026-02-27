@@ -9,6 +9,28 @@ The platform delivers daily modules that combine lesson content, scenarios, quiz
 
 ---
 
+## Install and Go
+
+For most users, the easiest path is to install a prebuilt desktop release (no local toolchains required):
+
+1. Open the latest GitHub Release for this repository.
+2. Download your platform installer:
+   - macOS: `.dmg`
+   - Windows: `.exe` or `.msi`
+3. Install and launch.
+
+Only build from source if you are developing. If you do, run:
+
+```bash
+npm install
+npm run doctor:tauri
+npm run tauri:build
+```
+
+If `doctor:tauri` fails, it prints exactly what to install next (for example Rust/Cargo or Xcode CLI tools).
+
+---
+
 ## Current Scope (Important)
 
 This repository currently ships with the **legacy curriculum shape**:
@@ -118,6 +140,12 @@ Default dev URL is typically `http://localhost:3000` unless overridden.
 ---
 
 ## Desktop Development & Build (Tauri)
+
+Before building from source, run:
+
+```bash
+npm run doctor:tauri
+```
 
 ### Desktop dev mode
 

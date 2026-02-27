@@ -36,7 +36,6 @@ interface NewsByteContent {
   updates: Array<{ title: string; content: string; source: string }>;
   whyItMatters: string;
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -108,10 +107,10 @@ export function NewsByteView({ newsByte, onComplete }: NewsByteViewProps) {
   })();
 
   return (
-    <div className="max-w-[700px] mx-auto py-8 px-4 flex flex-col min-h-[calc(100vh-80px)]">
+    <div className="max-w-[700px] mx-auto py-8 px-4 flex flex-col min-h-[calc(100vh-160px)]">
       {/* Top bar */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
           <Badge variant="secondary" className="gap-1.5">
             <NewspaperIcon className="size-3" />
             Industry Briefing
@@ -199,7 +198,7 @@ export function NewsByteView({ newsByte, onComplete }: NewsByteViewProps) {
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between mt-8 pt-4 border-t border-border">
+      <div className="flex items-center justify-between mt-6 pt-3 border-t border-border">
         <Button
           variant="ghost"
           onClick={goPrev}

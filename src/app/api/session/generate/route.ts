@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getNextTopic, getMissingPrerequisites } from "@/lib/curriculum";
+import { getNextTopic, getMissingPrerequisites, getTopicById } from "@/lib/curriculum";
 
 function safeJsonParse(json: string, fallback: unknown = null) {
   try {
@@ -14,9 +14,13 @@ export async function GET(request: NextRequest) {
   try {
     const topicId = request.nextUrl.searchParams.get("topicId");
     const overridePrereq = request.nextUrl.searchParams.get("overridePrereq") === "1";
-    
+
+    if (topicId && !getTopicById(topicId)) {
+      return NextResponse.json({ error: "Invalid topic id" }, { status: 400 });
+    }
+
     let sessionContent;
-    
+
     if (topicId) {
       if (!overridePrereq) {
         const completed = await prisma.topicProgress.findMany({
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
       sessionContent = await prisma.sessionContent.findUnique({
         where: { topicId },
       });
-      
+
       if (!sessionContent) {
         return NextResponse.json(
           { error: "Session not found in library" },
@@ -56,13 +60,13 @@ export async function GET(request: NextRequest) {
       const lastDomain = lastCompletion
         ? (await prisma.sessionContent.findFirst({ where: { topicId: lastCompletion.topicId } }))?.domain ?? null
         : null;
-      
+
       const topic = getNextTopic(completedIds, lastDomain);
-      
+
       sessionContent = await prisma.sessionContent.findUnique({
         where: { topicId: topic.id },
       });
-      
+
       if (!sessionContent) {
         return NextResponse.json(
           { error: "Recommended session has not been generated yet. Please run the library generator." },
@@ -75,25 +79,27 @@ export async function GET(request: NextRequest) {
     const todayCompletion = await prisma.sessionCompletion.findFirst({
       where: { topicId: sessionContent.topicId, date: today },
     });
-    
-    return NextResponse.json({
-      id: sessionContent.id,
-      topicId: sessionContent.topicId,
-      domain: sessionContent.domain,
-      topic: sessionContent.topic,
-      level: sessionContent.level,
-      moduleType: sessionContent.moduleType,
-      competencyIds: safeJsonParse(sessionContent.competencyIds, []),
-      prerequisites: safeJsonParse(sessionContent.prerequisites, []),
-      lesson: safeJsonParse(sessionContent.lessonContent),
-      scenario: safeJsonParse(sessionContent.scenarioContent),
-      quiz: safeJsonParse(sessionContent.quizContent, { questions: [] }),
-      capstone: safeJsonParse(sessionContent.capstoneContent ?? "null"),
-      confidenceScore: sessionContent.confidenceScore,
-      completed: todayCompletion != null,
-      quizScore: todayCompletion?.quizScore ?? null,
-      quizTotal: todayCompletion?.quizTotal ?? null,
-    });
+
+    return NextResponse.json(
+      {
+        id: sessionContent.id,
+        topicId: sessionContent.topicId,
+        domain: sessionContent.domain,
+        topic: sessionContent.topic,
+        level: sessionContent.level,
+        moduleType: sessionContent.moduleType,
+        competencyIds: safeJsonParse(sessionContent.competencyIds, []),
+        prerequisites: safeJsonParse(sessionContent.prerequisites, []),
+        lesson: safeJsonParse(sessionContent.lessonContent),
+        scenario: safeJsonParse(sessionContent.scenarioContent),
+        quiz: safeJsonParse(sessionContent.quizContent, { questions: [] }),
+        capstone: safeJsonParse(sessionContent.capstoneContent ?? "null"),
+        completed: todayCompletion != null,
+        quizScore: todayCompletion?.quizScore ?? null,
+        quizTotal: todayCompletion?.quizTotal ?? null,
+      },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+    );
   } catch (error) {
     console.error("Failed to load session:", error);
     return NextResponse.json(

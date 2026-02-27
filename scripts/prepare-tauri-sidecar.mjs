@@ -26,32 +26,56 @@ async function exists(targetPath) {
 }
 
 function resolveNodeArchive() {
-  if (process.platform !== "darwin") {
-    throw new Error(
-      `Unsupported platform ${process.platform}. This script currently packages Node for macOS only.`
-    );
-  }
-
   const arch = process.arch === "arm64" ? "arm64" : process.arch === "x64" ? "x64" : null;
   if (!arch) {
     throw new Error(`Unsupported architecture ${process.arch} for bundled Node runtime.`);
   }
 
-  const archiveName = `node-${nodeVersion}-darwin-${arch}.tar.gz`;
-  return {
-    archiveName,
-    url: `https://nodejs.org/dist/${nodeVersion}/${archiveName}`,
-    extractedFolderName: `node-${nodeVersion}-darwin-${arch}`,
-  };
+  if (process.platform === "darwin") {
+    const archiveName = `node-${nodeVersion}-darwin-${arch}.tar.gz`;
+    return {
+      archiveName,
+      url: `https://nodejs.org/dist/${nodeVersion}/${archiveName}`,
+      extractedFolderName: `node-${nodeVersion}-darwin-${arch}`,
+      nodeBinaryRelativePath: path.join("bin", "node"),
+      extract: async (archivePath, extractRoot) => {
+        await execFileAsync("tar", ["-xzf", archivePath, "-C", extractRoot]);
+      },
+    };
+  }
+
+  if (process.platform === "win32") {
+    const archiveName = `node-${nodeVersion}-win-${arch}.zip`;
+    return {
+      archiveName,
+      url: `https://nodejs.org/dist/${nodeVersion}/${archiveName}`,
+      extractedFolderName: `node-${nodeVersion}-win-${arch}`,
+      nodeBinaryRelativePath: "node.exe",
+      extract: async (archivePath, extractRoot) => {
+        await execFileAsync("powershell", [
+          "-NoProfile",
+          "-Command",
+          "param([string]$archive,[string]$dest) Expand-Archive -LiteralPath $archive -DestinationPath $dest -Force",
+          archivePath,
+          extractRoot,
+        ]);
+      },
+    };
+  }
+
+  throw new Error(
+    `Unsupported platform ${process.platform}. Expected darwin or win32 for bundled Node runtime.`
+  );
 }
 
 async function prepareBundledNodeRuntime() {
-  const bundledNodeBin = path.join(nodeRuntimeDir, "bin", "node");
+  const { archiveName, url, extractedFolderName, nodeBinaryRelativePath, extract } =
+    resolveNodeArchive();
+  const bundledNodeBin = path.join(nodeRuntimeDir, nodeBinaryRelativePath);
   if (await exists(bundledNodeBin)) {
     return;
   }
 
-  const { archiveName, url, extractedFolderName } = resolveNodeArchive();
   const cacheDir = path.join(root, ".cache", "tauri-node-runtime");
   const archivePath = path.join(cacheDir, archiveName);
   const extractRoot = path.join(cacheDir, "extract");
@@ -70,11 +94,13 @@ async function prepareBundledNodeRuntime() {
   }
 
   await rm(extractedDir, { recursive: true, force: true });
-  await execFileAsync("tar", ["-xzf", archivePath, "-C", extractRoot]);
+  await extract(archivePath, extractRoot);
 
   await rm(nodeRuntimeDir, { recursive: true, force: true });
   await cp(extractedDir, nodeRuntimeDir, { recursive: true });
-  await chmod(path.join(nodeRuntimeDir, "bin", "node"), 0o755);
+  if (process.platform !== "win32") {
+    await chmod(path.join(nodeRuntimeDir, nodeBinaryRelativePath), 0o755);
+  }
 }
 
 async function sanitizeDatabaseForCleanShare(dbPath) {

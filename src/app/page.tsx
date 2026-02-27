@@ -138,7 +138,7 @@ export default function DashboardPage() {
         if (sessionRes.ok) {
           const todayData = await sessionRes.json();
           setSession({
-            hasActiveSession: todayData.session != null,
+            hasActiveSession: Boolean(todayData.session?.inProgress),
             sessionCompleted: todayData.session?.completed ?? false,
           });
         }

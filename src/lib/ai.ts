@@ -43,7 +43,6 @@ export interface LessonContent {
   }>;
   keyTakeaways: string[];
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -56,7 +55,6 @@ export interface ScenarioContent {
     analysis: string;
   }>;
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -94,7 +92,6 @@ export type AssessmentQuestion = QuizQuestion | CodeChallengeQuestion;
 export interface QuizContent {
   questions: AssessmentQuestion[];
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -108,7 +105,6 @@ export interface NewsByteContent {
   }>;
   whyItMatters: string;
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -794,7 +790,6 @@ export async function generateLesson(
   return {
     ...content,
     citations,
-    confidenceScore: verification.confidenceScore,
     ...(verification.confidenceScore < CONFIDENCE_THRESHOLD && {
       flaggedClaims: verification.flaggedClaims,
     }),
@@ -815,7 +810,6 @@ export async function generateScenario(
   return {
     ...content,
     citations,
-    confidenceScore: verification.confidenceScore,
     ...(verification.confidenceScore < CONFIDENCE_THRESHOLD && {
       flaggedClaims: verification.flaggedClaims,
     }),
@@ -836,7 +830,6 @@ export async function generateQuiz(
   return {
     ...content,
     citations,
-    confidenceScore: verification.confidenceScore,
     ...(verification.confidenceScore < CONFIDENCE_THRESHOLD && {
       flaggedClaims: verification.flaggedClaims,
     }),
@@ -856,7 +849,6 @@ export async function generateNewsByte(
   return {
     ...content,
     citations,
-    confidenceScore: verification.confidenceScore,
     ...(verification.confidenceScore < CONFIDENCE_THRESHOLD && {
       flaggedClaims: verification.flaggedClaims,
     }),

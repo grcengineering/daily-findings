@@ -53,7 +53,7 @@ async function main() {
 
     console.log(`Fixing ${SECTION} for: ${topic.title} (${topic.domain} / ${topic.level})`);
 
-    let newContent: { confidenceScore?: number };
+    let newContent: object;
 
     if (SECTION === "lesson") {
       newContent = await ai.generateLesson(input, topic.domain, topic.level);
@@ -63,42 +63,20 @@ async function main() {
       newContent = await ai.generateQuiz(input, topic.domain, topic.level);
     }
 
-    const newScore = newContent.confidenceScore ?? 0;
-    console.log(`New ${SECTION} score: ${newScore}%`);
-
-    if (newScore < 95) {
-      console.log(`WARNING: Score still below 95% after max retries. Updating anyway.`);
-    }
+    console.log(`Generated new ${SECTION} content`);
 
     const contentField = SECTION === "lesson" ? "lessonContent"
       : SECTION === "scenario" ? "scenarioContent"
       : "quizContent";
 
-    const otherSections = {
-      lesson: JSON.parse(existing.lessonContent),
-      scenario: JSON.parse(existing.scenarioContent),
-      quiz: JSON.parse(existing.quizContent),
-    };
-
-    otherSections[SECTION] = newContent;
-
-    const scores = [
-      otherSections.lesson.confidenceScore,
-      otherSections.scenario.confidenceScore,
-      otherSections.quiz.confidenceScore,
-    ].filter((s): s is number => typeof s === "number");
-
-    const newAggregate = scores.length > 0 ? Math.min(...scores) : null;
-
     await prisma.sessionContent.update({
       where: { topicId: TOPIC_ID },
       data: {
         [contentField]: JSON.stringify(newContent),
-        confidenceScore: newAggregate,
       },
     });
 
-    console.log(`Updated ${SECTION} for ${topic.title}. New aggregate: ${newAggregate}%`);
+    console.log(`Updated ${SECTION} for ${topic.title}`);
   } finally {
     await prisma.$disconnect();
   }

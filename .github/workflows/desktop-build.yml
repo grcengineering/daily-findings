@@ -1,5 +1,8 @@
 name: Desktop Build (macOS + Windows)
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
@@ -7,8 +10,57 @@ on:
       - "v*"
 
 jobs:
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./prisma/dev.db
+      HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD != '' }}
+      HAS_APPLE_NOTARY_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+      HAS_APPLE_NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+      HAS_APPLE_NOTARY_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+      HAS_WIN_SIGN_CERT: ${{ secrets.WIN_SIGN_CERT != '' }}
+      HAS_WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize database
+        run: |
+          npx prisma db push
+          npm run library:seed:expanded
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Curriculum validation
+        run: npm run curriculum:validate
+
+      - name: Build app
+        run: npm run build
+
+      - name: Start server and run QA
+        run: |
+          npm run start -- -p 3199 &
+          npx wait-on http://127.0.0.1:3199 --timeout 60000
+          npm run qa
+
   build-desktop:
     name: Build on ${{ matrix.os }}
+    needs: quality-gate
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -20,12 +72,21 @@ jobs:
             artifact_paths: |
               src-tauri/target/release/bundle/macos/*
               src-tauri/target/release/bundle/dmg/*
+            bundle_dirs: "src-tauri/target/release/bundle/macos src-tauri/target/release/bundle/dmg"
           - os: windows-latest
             bundles: "nsis,msi"
             artifact_name: "daily-findings-windows"
             artifact_paths: |
               src-tauri/target/release/bundle/nsis/*
               src-tauri/target/release/bundle/msi/*
+            bundle_dirs: "src-tauri/target/release/bundle/nsis src-tauri/target/release/bundle/msi"
+
+    # Optional signing/notarization: set these secrets to enable (workflow does not fail if unset)
+    # macOS: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+    #        APPLE_ID, APPLE_TEAM_ID, APPLE_APP_SPECIFIC_PASSWORD
+    # Windows: WIN_SIGN_CERT (base64-encoded certificate), WIN_SIGN_PASSWORD
+    env:
+      DATABASE_URL: file:./prisma/dev.db
 
     steps:
       - name: Checkout
@@ -43,8 +104,101 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Initialize database
+        run: |
+          npx prisma db push
+          npm run library:seed:expanded
+
+      - name: Import Apple signing certificate (optional)
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/codesign.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import /tmp/codesign.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
       - name: Build desktop bundles
         run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
+
+      - name: Sign Windows installers (optional)
+        if: matrix.os == 'windows-latest' && env.HAS_WIN_SIGN_CERT == 'true' && env.HAS_WIN_SIGN_PASSWORD == 'true'
+        shell: pwsh
+        env:
+          WIN_SIGN_CERT: ${{ secrets.WIN_SIGN_CERT }}
+          WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD }}
+          WIN_TIMESTAMP_URL: ${{ secrets.WIN_TIMESTAMP_URL }}
+        run: |
+          $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WIN_SIGN_CERT))
+          $timestamp = "http://timestamp.digicert.com"
+          if ($env:WIN_TIMESTAMP_URL) {
+            $parsedUri = $null
+            if ([System.Uri]::TryCreate($env:WIN_TIMESTAMP_URL, [System.UriKind]::Absolute, [ref]$parsedUri) -and ($parsedUri.Scheme -eq "http" -or $parsedUri.Scheme -eq "https")) {
+              $timestamp = $parsedUri.AbsoluteUri
+            } else {
+              throw "Invalid WIN_TIMESTAMP_URL. Must be absolute http/https URL."
+            }
+          }
+          $targets = Get-ChildItem "src-tauri/target/release/bundle" -Recurse -Include *.msi,*.exe
+          if (-not $targets) {
+            throw "No Windows installer artifacts found to sign."
+          }
+          foreach ($file in $targets) {
+            & signtool sign /fd SHA256 /td SHA256 /f $certPath /p $env:WIN_SIGN_PASSWORD /tr $timestamp $file.FullName
+          }
+
+      - name: Notarize macOS DMG (optional)
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_NOTARY_APPLE_ID == 'true' && env.HAS_APPLE_NOTARY_TEAM_ID == 'true' && env.HAS_APPLE_NOTARY_PASSWORD == 'true' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: node scripts/notarize-macos.mjs
+
+      - name: Verify macOS signatures/notarization (optional)
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          APP_PATH=$(ls -1 src-tauri/target/release/bundle/macos/*.app 2>/dev/null | head -n 1 || true)
+          DMG_PATH=$(ls -1 src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null | head -n 1 || true)
+          if [ -n "$APP_PATH" ]; then
+            codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          fi
+          if [ -n "$DMG_PATH" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
+            xcrun stapler validate "$DMG_PATH"
+          fi
+
+      - name: Verify Windows signatures (optional)
+        if: matrix.os == 'windows-latest' && env.HAS_WIN_SIGN_CERT == 'true' && env.HAS_WIN_SIGN_PASSWORD == 'true'
+        shell: pwsh
+        run: |
+          $targets = Get-ChildItem "src-tauri/target/release/bundle" -Recurse -Include *.msi,*.exe
+          if (-not $targets) {
+            throw "No Windows installer artifacts found to verify."
+          }
+          foreach ($file in $targets) {
+            signtool verify /pa $file.FullName
+          }
+
+      - name: Verify build artifacts
+        run: node scripts/verify-build.mjs ${{ matrix.os }}
+
+      - name: Generate checksums
+        run: node scripts/generate-checksums.mjs ${{ matrix.bundle_dirs }}
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-checksums
+          path: CHECKSUMS.txt
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -52,3 +206,63 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_paths }}
           if-no-files-found: error
+
+      - name: Cleanup signing certificate (macOS)
+        if: always() && matrix.os == 'macos-latest'
+        run: |
+          rm -f /tmp/codesign.p12
+          security delete-keychain build.keychain || true
+
+      - name: Cleanup signing certificate (Windows)
+        if: always() && matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Remove-Item -Force (Join-Path $env:RUNNER_TEMP "codesign.pfx") -ErrorAction SilentlyContinue
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: build-desktop
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: daily-findings-macos
+          path: release-assets/daily-findings-macos
+
+      - name: Download macOS checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: daily-findings-macos-checksums
+          path: release-assets/daily-findings-macos-checksums
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: daily-findings-windows
+          path: release-assets/daily-findings-windows
+
+      - name: Download Windows checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: daily-findings-windows-checksums
+          path: release-assets/daily-findings-windows-checksums
+
+      - name: Normalize checksum filenames
+        run: |
+          mkdir -p release-assets/publish
+          cp release-assets/daily-findings-macos-checksums/CHECKSUMS.txt release-assets/publish/daily-findings-macos-CHECKSUMS.txt
+          cp release-assets/daily-findings-windows-checksums/CHECKSUMS.txt release-assets/publish/daily-findings-windows-CHECKSUMS.txt
+
+      - name: Create GitHub release with assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/daily-findings-macos/**/*
+            release-assets/daily-findings-windows/**/*
+            release-assets/publish/daily-findings-macos-CHECKSUMS.txt
+            release-assets/publish/daily-findings-windows-CHECKSUMS.txt

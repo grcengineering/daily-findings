@@ -45,7 +45,6 @@ interface LessonContent {
   sections: LessonSection[];
   keyTakeaways: string[];
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 

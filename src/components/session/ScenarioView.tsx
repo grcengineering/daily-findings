@@ -39,7 +39,6 @@ interface ScenarioContent {
   scenario: string;
   analysisQuestions: Array<{ question: string; analysis: string }>;
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 

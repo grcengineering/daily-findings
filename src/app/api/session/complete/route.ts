@@ -14,12 +14,29 @@ function yesterdayDateString(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const origin = request.headers.get("origin");
+    if (origin) {
+      const requestOrigin = request.nextUrl.origin;
+      if (origin !== requestOrigin) {
+        return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+      }
+    }
+
+    const contentLength = Number(request.headers.get("content-length") ?? "0");
+    if (Number.isFinite(contentLength) && contentLength > 10_000) {
+      return NextResponse.json(
+        { error: "Request payload too large" },
+        { status: 413 }
+      );
+    }
+
     const body = await request.json();
     const { topicId, quizScore, quizTotal } = body;
 
     if (
       typeof topicId !== "string" ||
       !topicId ||
+      !/^[A-Za-z0-9_:-]+$/.test(topicId) ||
       typeof quizScore !== "number" ||
       typeof quizTotal !== "number" ||
       !Number.isFinite(quizScore) ||
@@ -30,10 +47,10 @@ export async function POST(request: NextRequest) {
       !Number.isInteger(quizScore) ||
       !Number.isInteger(quizTotal)
     ) {
-      return NextResponse.json(
-        { error: "Invalid input: topicId must be a string, quizScore and quizTotal must be non-negative integers with quizScore <= quizTotal" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        error:
+          "Invalid input: topicId must be a string, quizScore and quizTotal must be non-negative integers with quizScore <= quizTotal",
+      }, { status: 400 });
     }
 
     const sessionContent = await prisma.sessionContent.findUnique({
@@ -52,7 +69,9 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       const stats = await prisma.userStats.findUnique({ where: { id: "user" } });
-      return NextResponse.json(stats ?? { message: "Session already completed today" });
+      return NextResponse.json(stats ?? { message: "Session already completed today" }, {
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      });
     }
 
     try {
@@ -68,7 +87,9 @@ export async function POST(request: NextRequest) {
       const prismaError = createError as { code?: string };
       if (prismaError.code === "P2002") {
         const stats = await prisma.userStats.findUnique({ where: { id: "user" } });
-        return NextResponse.json(stats ?? { message: "Session already completed today" });
+        return NextResponse.json(stats ?? { message: "Session already completed today" }, {
+          headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+        });
       }
       throw createError;
     }
@@ -155,7 +176,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(updatedStats);
+    return NextResponse.json(updatedStats, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+    });
   } catch (error) {
     console.error("Failed to complete session:", error);
     return NextResponse.json(

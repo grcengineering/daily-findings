@@ -89,11 +89,18 @@ export async function GET() {
       };
     }
 
-    return NextResponse.json({
-      stats,
-      recentSessions,
-      domainProgress,
-    });
+    const headers = new Headers();
+    headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+
+    return NextResponse.json(
+      {
+        _fresh: Date.now(),
+        stats,
+        recentSessions,
+        domainProgress,
+      },
+      { headers }
+    );
   } catch (error) {
     console.error("Failed to fetch stats:", error);
     return NextResponse.json(

@@ -51,6 +51,17 @@ const parser = new Parser({
   },
 });
 
+function isSafeRssUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    return host !== "localhost" && host !== "127.0.0.1" && !host.endsWith(".local");
+  } catch {
+    return false;
+  }
+}
+
 function extractImage(item: Record<string, unknown>): string | undefined {
   const enc = item.enclosure as Record<string, string> | undefined;
   if (enc?.url && enc.url.length > 0) return enc.url;
@@ -89,6 +100,15 @@ async function fetchFeed(
   source: string
 ): Promise<{ source: string; ok: boolean; articles: NewsArticle[]; error?: string }> {
   try {
+    if (!isSafeRssUrl(url)) {
+      return {
+        source,
+        ok: false,
+        articles: [],
+        error: "Blocked unsafe RSS URL",
+      };
+    }
+
     const feed = await parser.parseURL(url);
     const articles = (feed.items ?? []).slice(0, 10).map((item) => {
       const rawSummary =
@@ -179,7 +199,9 @@ export async function GET(request: NextRequest) {
         stale: false,
         fromCache: true,
       };
-      return NextResponse.json(payload);
+      return NextResponse.json(payload, {
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      });
     }
 
     const refreshStartedAt = Date.now();
@@ -194,7 +216,9 @@ export async function GET(request: NextRequest) {
         stale: true,
         fromCache: true,
       };
-      return NextResponse.json(payload);
+      return NextResponse.json(payload, {
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      });
     }
 
     cachedArticles = articles;
@@ -210,7 +234,9 @@ export async function GET(request: NextRequest) {
       stale: false,
       fromCache: false,
     };
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+    });
   } catch (error) {
     console.error("Failed to fetch news:", error);
     if (cachedArticles) {
@@ -222,7 +248,9 @@ export async function GET(request: NextRequest) {
         stale: true,
         fromCache: true,
       };
-      return NextResponse.json(payload);
+      return NextResponse.json(payload, {
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      });
     }
     return NextResponse.json(
       {
@@ -233,7 +261,10 @@ export async function GET(request: NextRequest) {
         stale: true,
         fromCache: false,
       } satisfies NewsPayload,
-      { status: 500 }
+      {
+        status: 500,
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      }
     );
   }
 }

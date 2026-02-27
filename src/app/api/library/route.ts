@@ -74,7 +74,10 @@ export async function GET() {
       }
     }
     
-    return NextResponse.json({ domains, paths: getBridgeTrack() });
+    return NextResponse.json(
+      { domains, paths: getBridgeTrack() },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+    );
   } catch (error) {
     console.error("Failed to load library:", error);
     return NextResponse.json({ error: "Failed to load library" }, { status: 500 });

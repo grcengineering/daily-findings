@@ -1,10 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
 import {
-  ShieldCheckIcon,
-  ShieldAlertIcon,
   ExternalLinkIcon,
   AlertTriangleIcon,
 } from "lucide-react";
@@ -24,36 +21,7 @@ interface FlaggedClaim {
 
 interface VerificationIndicatorProps {
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
-}
-
-export function VerificationBadge({
-  confidenceScore,
-}: {
-  confidenceScore?: number;
-}) {
-  if (confidenceScore == null) return null;
-
-  const isVerified = confidenceScore >= 90;
-
-  return (
-    <Badge
-      variant="outline"
-      className="gap-1.5 text-[10px]"
-      style={{
-        borderColor: isVerified ? "#10b98140" : "#f59e0b40",
-        color: isVerified ? "#10b981" : "#f59e0b",
-      }}
-    >
-      {isVerified ? (
-        <ShieldCheckIcon className="size-3" />
-      ) : (
-        <ShieldAlertIcon className="size-3" />
-      )}
-      {isVerified ? "Verified" : "Partially Verified"} ({confidenceScore}%)
-    </Badge>
-  );
 }
 
 export function FlaggedClaimsWarning({

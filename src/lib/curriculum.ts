@@ -77,6 +77,13 @@ const MODULE_TYPE_ORDER: Record<TopicInfo["moduleType"], number> = {
   capstone: 3,
 };
 
+const VALID_MODULE_TYPES: TopicInfo["moduleType"][] = [
+  "core",
+  "depth",
+  "specialization",
+  "capstone",
+];
+
 const LEVEL_LABEL: Record<CurriculumModule["tier"], string> = {
   foundational: "Foundational",
   intermediate: "Intermediate",
@@ -99,24 +106,57 @@ function defaultObjectives(title: string, domain: string): string[] {
   ];
 }
 
+function guardrailWarn(msg: string): void {
+  if (typeof console !== "undefined" && console.warn) {
+    console.warn(`[curriculum] ${msg}`);
+  }
+}
+
 function flattenCurriculum(data: CurriculumDomainFile[]): TopicInfo[] {
+  const allModuleIds = new Set<string>();
+  for (const domain of data) {
+    for (const m of domain.modules ?? []) {
+      if (m.id) allModuleIds.add(m.id);
+    }
+  }
+
   const topics: TopicInfo[] = [];
   for (const domain of data) {
-    for (const domainModule of domain.modules) {
+    for (const domainModule of domain.modules ?? []) {
+      const rawType = domainModule.module_type;
+      const moduleType: TopicInfo["moduleType"] =
+        rawType && VALID_MODULE_TYPES.includes(rawType as TopicInfo["moduleType"])
+          ? (rawType as TopicInfo["moduleType"])
+          : "core";
+      if (rawType && !VALID_MODULE_TYPES.includes(rawType as TopicInfo["moduleType"])) {
+        guardrailWarn(
+          `Module ${domainModule.id}: invalid module_type "${rawType}", normalized to "core"`
+        );
+      }
+
+      const rawPrereqs = (domainModule.prerequisites ?? []).map((p) => p?.module_id).filter(Boolean) as string[];
+      const prerequisites = rawPrereqs.filter((id) => {
+        const valid = allModuleIds.has(id);
+        if (!valid) {
+          guardrailWarn(`Module ${domainModule.id}: prerequisite "${id}" not found, skipping`);
+        }
+        return valid;
+      });
+
       topics.push({
         id: domainModule.id,
         title: domainModule.title,
         objectives: defaultObjectives(domainModule.title, domain.name),
         keyTerms: toKeyTerms(domainModule.title),
         promptHints:
-          domainModule.module_type === "capstone"
+          moduleType === "capstone"
             ? "Include deliverable quality criteria and applied scenario decisions."
             : "Focus on practical implementation with one realistic enterprise example.",
         domain: domain.name,
-        level: LEVEL_LABEL[domainModule.tier],
-        moduleType: domainModule.module_type,
+        level: LEVEL_LABEL[domainModule.tier ?? "foundational"] ?? "Foundational",
+        moduleType,
         competencyIds: domainModule.competency_ids ?? [],
-        prerequisites: (domainModule.prerequisites ?? []).map((p) => p.module_id),
+        prerequisites,
       });
     }
   }

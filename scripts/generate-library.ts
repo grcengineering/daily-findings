@@ -102,14 +102,6 @@ async function processTopic(
         : Promise.resolve(null),
     ]);
 
-    const scores = [
-      lesson.confidenceScore,
-      scenario.confidenceScore,
-      quiz.confidenceScore,
-    ].filter((s): s is number => typeof s === "number");
-
-    const aggregateConfidence = scores.length > 0 ? Math.min(...scores) : null;
-
     try {
       await prisma.sessionContent.create({
         data: {
@@ -124,7 +116,6 @@ async function processTopic(
           scenarioContent: JSON.stringify(scenario),
           quizContent: JSON.stringify(quiz),
           capstoneContent: capstone ? JSON.stringify(capstone) : null,
-          confidenceScore: aggregateConfidence,
         },
       });
     } catch (dbErr: unknown) {
@@ -136,12 +127,8 @@ async function processTopic(
       throw dbErr;
     }
 
-    const lPct = lesson.confidenceScore ?? "n/a";
-    const sPct = scenario.confidenceScore ?? "n/a";
-    const qPct = quiz.confidenceScore ?? "n/a";
-
     console.log(
-      `${label} OK   ${topic.title} (${topic.domain} / ${topic.level}) lesson:${lPct}% scenario:${sPct}% quiz:${qPct}%`,
+      `${label} OK   ${topic.title} (${topic.domain} / ${topic.level})`,
     );
     return "generated";
   } catch (err) {

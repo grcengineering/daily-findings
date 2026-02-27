@@ -46,6 +46,10 @@ dev.db-journal
 # local/build caches
 .cache/
 
+# CI-generated checksums
+CHECKSUMS.txt
+qa-artifacts/
+
 # tauri generated artifacts
 src-tauri/target/
 src-tauri/resources/next-standalone/

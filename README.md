@@ -3,7 +3,7 @@
 Daily Findings is a GRC training platform with two runtime modes:
 
 - a `Next.js` web app for development and browser usage
-- a `Tauri` desktop wrapper that packages the app as a macOS desktop application
+- a `Tauri` desktop wrapper that packages the app as a cross-platform desktop application (macOS and Windows)
 
 The platform delivers daily modules that combine lesson content, scenarios, quizzes, progress tracking, and a news feed.
 
@@ -186,6 +186,61 @@ Notes:
 
 - Building Windows bundles from macOS locally is not supported in this setup.
 - Use the workflow to generate shareable Windows installers reliably.
+
+---
+
+## Release Process
+
+Desktop builds are produced by an automated workflow that runs a quality gate (lint, curriculum validation, build, QA) before packaging. Releases can be triggered manually or by pushing a version tag (e.g. `v0.1.0`).
+
+- Manual trigger uploads build artifacts to the workflow run.
+- Tag trigger (`v*`) uploads artifacts and also publishes a GitHub Release with attached installers and checksums.
+
+For full details, prerequisites, and troubleshooting, see [DISTRIBUTION.md](DISTRIBUTION.md).
+
+---
+
+## Signed vs Unsigned Artifacts
+
+Builds run successfully with or without code signing. When signing secrets are configured, macOS artifacts are notarized and Windows installers are signed. Without them, artifacts are unsigned. Unsigned builds are suitable for internal testing; for public distribution, configure signing to avoid security warnings and gatekeeper prompts. See [DISTRIBUTION.md](DISTRIBUTION.md) for required secrets.
+
+---
+
+## Install Guidance
+
+### macOS
+
+1. Download the DMG from the release artifacts (or the `.app` bundle directly).
+2. Open the DMG and drag **Daily Findings** into Applications.
+3. On first launch, if macOS blocks the app (unsigned or unverified), open **System Settings → Privacy & Security** and choose **Open Anyway**, or right‑click the app and select **Open**.
+
+### Windows
+
+1. Download the NSIS installer (`.exe`) or MSI package from the release artifacts.
+2. Run the installer and follow the prompts.
+3. If SmartScreen blocks an unsigned installer, choose **More info** → **Run anyway** (or use a signed build when available).
+
+---
+
+## Checksum Verification
+
+Each release includes a `CHECKSUMS.txt` file (SHA256). To verify a download:
+
+1. Download the bundle artifact and the corresponding checksums artifact.
+2. From the project root, regenerate checksums for the extracted bundle directories and compare:
+
+```bash
+node scripts/generate-checksums.mjs <bundle-dir1> [bundle-dir2 ...]
+diff -u downloaded-checksums.txt CHECKSUMS.txt
+```
+
+If the files match, the download is intact. The file paths must match the extracted artifact layout; if you extract to a different location, regenerate from that exact location before comparing.
+
+---
+
+## Versioning Cadence
+
+Versions follow semantic versioning (e.g. `0.1.0`). Release tags use the `v` prefix (e.g. `v0.1.0`). Pushing a tag triggers the desktop build workflow and produces artifacts for that version. There is no fixed schedule; releases are cut as needed.
 
 ---
 

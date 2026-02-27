@@ -55,6 +55,15 @@ fn resource_sidecar_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 fn resource_node_bin(app: &tauri::AppHandle) -> Option<PathBuf> {
+  #[cfg(target_os = "windows")]
+  let resource_paths = [
+    "node-runtime/node.exe",
+    "resources/node-runtime/node.exe",
+    "node-runtime/bin/node.exe",
+    "resources/node-runtime/bin/node.exe",
+  ];
+
+  #[cfg(not(target_os = "windows"))]
   let resource_paths = [
     "node-runtime/bin/node",
     "resources/node-runtime/bin/node",
@@ -74,6 +83,16 @@ fn resource_node_bin(app: &tauri::AppHandle) -> Option<PathBuf> {
   None
 }
 
+fn trusted_env_node_bin() -> Option<PathBuf> {
+  let raw = std::env::var("TAURI_NODE_BIN").ok()?;
+  let candidate = PathBuf::from(raw);
+  if candidate.is_absolute() && candidate.exists() {
+    Some(candidate)
+  } else {
+    None
+  }
+}
+
 fn start_sidecar(app: &tauri::AppHandle) -> Result<Child, String> {
   let sidecar_dir = resource_sidecar_dir(app)?;
   let server_js = sidecar_dir.join("server.js");
@@ -86,9 +105,18 @@ fn start_sidecar(app: &tauri::AppHandle) -> Result<Child, String> {
   }
 
   let node_bin = if let Some(bundled) = resource_node_bin(app) {
-    bundled.display().to_string()
+    bundled
+  } else if let Some(env_node) = trusted_env_node_bin() {
+    env_node
   } else {
-    std::env::var("TAURI_NODE_BIN").unwrap_or_else(|_| "/opt/homebrew/bin/node".to_string())
+    #[cfg(target_os = "windows")]
+    {
+      PathBuf::from("node.exe")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+      PathBuf::from("/opt/homebrew/bin/node")
+    }
   };
 
   Command::new(node_bin)

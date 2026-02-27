@@ -17,18 +17,10 @@ async function main() {
 
   const poll = async () => {
     const sessions = await prisma.sessionContent.findMany({
-      select: { confidenceScore: true },
+      select: { topicId: true },
     });
 
     const total = sessions.length;
-    const above95 = sessions.filter((s) => (s.confidenceScore ?? 0) >= 95).length;
-    const below95 = total - above95;
-    const avgScore =
-      total > 0
-        ? Math.round(
-            sessions.reduce((sum, s) => sum + (s.confidenceScore ?? 0), 0) / total
-          )
-        : 0;
 
     const pct = Math.round((total / TOTAL_TOPICS) * 100);
     const barLen = 40;
@@ -38,7 +30,7 @@ async function main() {
     if (total !== lastCount) {
       const now = new Date().toLocaleTimeString();
       console.log(
-        `[${now}]  ${bar}  ${total}/${TOTAL_TOPICS} (${pct}%)  |  95%+: ${above95}  |  <95%: ${below95}  |  avg: ${avgScore}%`
+        `[${now}]  ${bar}  ${total}/${TOTAL_TOPICS} (${pct}%)`
       );
       lastCount = total;
     }

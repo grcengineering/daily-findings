@@ -39,7 +39,6 @@ interface LessonContent {
   }>;
   keyTakeaways: string[];
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -49,7 +48,6 @@ interface ScenarioContent {
   scenario: string;
   analysisQuestions: Array<{ question: string; analysis: string }>;
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -64,7 +62,6 @@ interface QuizQuestion {
 interface QuizContent {
   questions: QuizQuestion[];
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 
@@ -97,7 +94,6 @@ interface SessionData {
       needs_work: string;
     }>;
   } | null;
-  confidenceScore: number | null;
   completed: boolean;
   quizScore: number | null;
   quizTotal: number | null;

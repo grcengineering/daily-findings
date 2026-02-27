@@ -162,21 +162,28 @@ export async function GET() {
       earnedDate: b.earned ? stats.lastSessionDate ?? undefined : undefined,
     }));
 
-    return NextResponse.json({
-      stats,
-      domainProgress,
-      topicProgress: topicProgress.map((tp) => ({
-        topicId: tp.topicId,
-        domain: topicMetaById.get(tp.topicId)?.domain ?? tp.domain,
-        topic: topicMetaById.get(tp.topicId)?.title ?? tp.topic,
-        level: topicMetaById.get(tp.topicId)?.level ?? tp.level,
-        timesStudied: tp.timesStudied,
-        lastStudied: tp.lastStudied?.toISOString() ?? null,
-        quizScores: tp.quizScores,
-      })),
-      allSessions,
-      badges,
-    });
+    const headers = new Headers();
+    headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+
+    return NextResponse.json(
+      {
+        _fresh: Date.now(),
+        stats,
+        domainProgress,
+        topicProgress: topicProgress.map((tp) => ({
+          topicId: tp.topicId,
+          domain: topicMetaById.get(tp.topicId)?.domain ?? tp.domain,
+          topic: topicMetaById.get(tp.topicId)?.title ?? tp.topic,
+          level: topicMetaById.get(tp.topicId)?.level ?? tp.level,
+          timesStudied: tp.timesStudied,
+          lastStudied: tp.lastStudied?.toISOString() ?? null,
+          quizScores: tp.quizScores,
+        })),
+        allSessions,
+        badges,
+      },
+      { headers }
+    );
   } catch (error) {
     console.error("Failed to fetch progress:", error);
     return NextResponse.json(

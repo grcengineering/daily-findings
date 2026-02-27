@@ -1,0 +1,52 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./prisma/dev.db
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize database
+        run: |
+          npx prisma db push
+          npm run library:seed:expanded
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server and run tests
+        run: |
+          npm run start -- -p 3199 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3199 > /dev/null 2>&1; then
+              echo "Server ready"
+              break
+            fi
+            sleep 2
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start"
+              exit 1
+            fi
+          done
+          npm run test:ci

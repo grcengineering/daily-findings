@@ -30,7 +30,6 @@ function createLesson(topic: string) {
       "Use measurable outcomes to prove control effectiveness.",
       "Document assumptions, decisions, and exceptions clearly.",
     ],
-    confidenceScore: 97,
   };
 }
 
@@ -52,7 +51,6 @@ function createScenario(topic: string) {
           "Use staged rollouts and objective pass/fail checks so delivery velocity remains high while control quality improves over time.",
       },
     ],
-    confidenceScore: 97,
   };
 }
 
@@ -163,7 +161,7 @@ function createQuiz(topic: string, includeCodeChallenge: boolean) {
     }
   );
 
-  return { questions, confidenceScore: 97 };
+  return { questions };
 }
 
 function createCapstone(topic: string) {
@@ -233,7 +231,6 @@ async function main() {
       scenarioContent: JSON.stringify(createScenario(topic.title)),
       quizContent: JSON.stringify(createQuiz(topic.title, includeCodeChallenge)),
       capstoneContent: topic.moduleType === "capstone" ? JSON.stringify(createCapstone(topic.title)) : null,
-      confidenceScore: 97,
     };
 
     const existing = await prisma.sessionContent.findUnique({ where: { topicId: topic.id } });

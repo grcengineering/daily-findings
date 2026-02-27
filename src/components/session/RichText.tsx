@@ -436,7 +436,7 @@ export function RichText({ text, className, showReadAloud = true }: RichTextProp
             return (
               <p
                 key={i}
-                className="text-[15.5px] leading-[1.75] text-muted-foreground mb-4 last:mb-0"
+                className="text-[16px] leading-[1.8] text-muted-foreground mb-4 last:mb-0"
               >
                 {renderInline(parseInline(block.content))}
               </p>
@@ -446,7 +446,7 @@ export function RichText({ text, className, showReadAloud = true }: RichTextProp
             return (
               <ul key={i} className="mb-4 last:mb-0 space-y-2 ml-1">
                 {block.items.map((item, j) => (
-                  <li key={j} className="flex items-start gap-2.5 text-[15px] leading-[1.7] text-muted-foreground">
+                  <li key={j} className="flex items-start gap-2.5 text-[16px] leading-[1.75] text-muted-foreground">
                     <span className="mt-[9px] size-1.5 rounded-full bg-primary/60 shrink-0" />
                     <span>{renderInline(parseInline(item))}</span>
                   </li>
@@ -458,7 +458,7 @@ export function RichText({ text, className, showReadAloud = true }: RichTextProp
             return (
               <ol key={i} className="mb-4 last:mb-0 space-y-2 ml-1">
                 {block.items.map((item, j) => (
-                  <li key={j} className="flex items-start gap-2.5 text-[15px] leading-[1.7] text-muted-foreground">
+                  <li key={j} className="flex items-start gap-2.5 text-[16px] leading-[1.75] text-muted-foreground">
                     <span className="mt-[1px] text-xs font-semibold text-primary/70 min-w-[18px] shrink-0">
                       {j + 1}.
                     </span>

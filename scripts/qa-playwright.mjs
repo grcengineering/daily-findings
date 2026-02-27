@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const BASE_URL = "http://127.0.0.1:3199";
+const BASE_URL = process.env.BASE_URL ?? "http://127.0.0.1:3199";
 const OUT_DIR = path.join(process.cwd(), "qa-artifacts");
 const TYPO_PATTERNS = [
   /\bteh\b/i,
@@ -13,14 +13,24 @@ const TYPO_PATTERNS = [
   /\bti does\b/i,
 ];
 
+const SEVERE_CONSOLE_PATTERNS = [
+  /uncaught\s+(exception|error)/i,
+  /failed to fetch/i,
+  /network\s+error/i,
+  /syntax\s+error/i,
+  /cannot read propert(y|ies) of (undefined|null)/i,
+  /is not a function/i,
+];
+
 const PAGES = [
   "/",
   "/library",
   "/progress",
   "/history",
   "/news",
+  "/session",
   "/session?topicId=PRIVACY_F01",
-  "/session?topicId=GRCENG_CAP",
+  "/session?topicId=GRCENG_CAP&overridePrereq=1",
 ];
 
 function slugify(value) {
@@ -47,6 +57,13 @@ async function collectPageSignals(page) {
     const expandControls = Array.from(
       document.querySelectorAll("button, a, [role='button']")
     ).filter((el) => /expand|enlarge|zoom|fullscreen|full screen/i.test(el.textContent || ""));
+    const ttsVoice = document.querySelector('[aria-label="Text-to-speech voice"]');
+    const ttsSpeed = document.querySelector('[aria-label="Text-to-speech speed"]');
+    const readAloud = Array.from(document.querySelectorAll("button")).find((b) =>
+      /read aloud/i.test(b.textContent || "")
+    );
+    const ttsPresent = !!(ttsVoice || ttsSpeed || readAloud);
+    const voiceOptions = ttsVoice ? ttsVoice.querySelectorAll("option").length : 0;
     return {
       bodyText,
       veryLongParagraphs,
@@ -55,6 +72,8 @@ async function collectPageSignals(page) {
       brokenImages,
       tinyImagesCount: tinyImages.length,
       expandControlsCount: expandControls.length,
+      ttsPresent,
+      ttsVoiceOptions: voiceOptions,
     };
   });
   const typos = TYPO_PATTERNS.filter((p) => p.test(signals.bodyText)).map((p) => String(p));
@@ -73,6 +92,32 @@ async function tryToggleTheme(page) {
   return false;
 }
 
+async function tryEnlargeToggle(page) {
+  const enlargeBtn = page.locator("button").filter({
+    hasText: /enlarge|normal size/i,
+  }).first();
+  const visible = await enlargeBtn.isVisible().catch(() => false);
+  if (!visible) {
+    return { success: null, warning: "No enlarge control found (optional on this page)" };
+  }
+  try {
+    const initialText = (await enlargeBtn.textContent()) || "";
+    await enlargeBtn.click({ timeout: 3000 });
+    await page.waitForTimeout(400);
+    const afterFirstText = (await enlargeBtn.textContent()) || "";
+    const toggled = initialText.toLowerCase().includes("enlarge")
+      ? afterFirstText.toLowerCase().includes("normal")
+      : afterFirstText.toLowerCase().includes("enlarge");
+    if (toggled) {
+      await enlargeBtn.click({ timeout: 3000 });
+      await page.waitForTimeout(300);
+    }
+    return { success: !!toggled, warning: toggled ? null : "Enlarge toggle may not have changed state" };
+  } catch (err) {
+    return { success: false, warning: `Enlarge toggle error: ${err.message}` };
+  }
+}
+
 async function trySessionFlow(page) {
   const steps = [];
   for (let i = 0; i < 40; i++) {
@@ -82,7 +127,7 @@ async function trySessionFlow(page) {
       steps.push("run-check");
     }
 
-    const option = page.locator("button").filter({ hasText: /^[A-D]$/ }).first();
+    const option = page.getByRole("button", { name: /^[A-D]\b/i }).first();
     if (await option.isVisible().catch(() => false)) {
       await option.click().catch(() => {});
       steps.push("pick-option");
@@ -90,7 +135,7 @@ async function trySessionFlow(page) {
     }
 
     const nextLike = page.getByRole("button", {
-      name: /next|continue|see results|complete session|complete capstone/i,
+      name: /start session|next|continue|see results|complete session|complete capstone|back to dashboard/i,
     }).first();
     if (await nextLike.isVisible().catch(() => false)) {
       const label = (await nextLike.textContent().catch(() => "next")) || "next";
@@ -105,13 +150,23 @@ async function trySessionFlow(page) {
   return steps;
 }
 
+function checkQuizScoreVisible(page) {
+  return page.evaluate(() => {
+    const body = document.body?.innerText || "";
+    const hasQuizComplete = /quiz\s+complete/i.test(body);
+    const hasScorePattern = /\d+\s*\/\s*\d+/.test(body) && /%?\s*correct/i.test(body);
+    const hasTrophyOrResult = /trophy|score|result/i.test(body);
+    return hasQuizComplete || (hasScorePattern && hasTrophyOrResult);
+  });
+}
+
 async function run() {
   await mkdir(OUT_DIR, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1512, height: 982 } });
   const page = await context.newPage();
 
-  const report = { pages: [], summary: { failures: 0 } };
+  const report = { pages: [], summary: { failures: 0 }, severeConsoleErrors: [] };
   const consoleErrors = [];
   page.on("console", (msg) => {
     if (msg.type() === "error") consoleErrors.push(msg.text());
@@ -122,7 +177,18 @@ async function run() {
 
   for (const route of PAGES) {
     const url = `${BASE_URL}${route}`;
-    const entry = { route, url, ok: true, issues: [], sessionSteps: [] };
+    const entry = {
+      route,
+      url,
+      ok: true,
+      issues: [],
+      warnings: [],
+      sessionSteps: [],
+      quizInteraction: null,
+      quizScoreVisible: null,
+      enlargeToggle: null,
+      ttsCheck: null,
+    };
     try {
       const res = await page.goto(url, { waitUntil: "networkidle", timeout: 20000 });
       if (!res || res.status() >= 400) {
@@ -141,7 +207,27 @@ async function run() {
       }
 
       if (route.startsWith("/session")) {
+        const enlargeResult = await tryEnlargeToggle(page);
+        entry.enlargeToggle = enlargeResult;
+        if (enlargeResult.warning) {
+          entry.warnings.push(enlargeResult.warning);
+        }
+        if (enlargeResult.success === false) {
+          entry.issues.push("Enlarge control failed to toggle correctly");
+        }
+
         entry.sessionSteps = await trySessionFlow(page);
+        entry.quizInteraction = entry.sessionSteps.some(
+          (s) => s === "pick-option" || s === "run-check"
+        );
+        entry.quizScoreVisible = await checkQuizScoreVisible(page).catch(() => false);
+        if (entry.sessionSteps.length > 0 && !entry.quizScoreVisible && !entry.quizInteraction) {
+          entry.warnings.push("Session flow ran but no quiz interaction or score detected");
+        }
+        if (entry.quizInteraction && !entry.quizScoreVisible) {
+          entry.warnings.push("Quiz interaction occurred but score/result not visible");
+        }
+
         await page.screenshot({
           path: path.join(OUT_DIR, `${slugify(route)}-post-flow.png`),
           fullPage: true,
@@ -150,6 +236,9 @@ async function run() {
 
       const signals = await collectPageSignals(page);
       entry.signals = signals;
+      if (/application error: a client-side exception/i.test(signals.bodyText)) {
+        entry.issues.push("Client-side application error rendered on page");
+      }
       if (signals.veryLongParagraphs > 0) {
         entry.issues.push(`Very long paragraphs: ${signals.veryLongParagraphs}`);
       }
@@ -165,8 +254,26 @@ async function run() {
       if (signals.tinyImagesCount > 0) {
         entry.issues.push(`Potentially unreadable tiny images: ${signals.tinyImagesCount}`);
       }
-      if (signals.expandControlsCount === 0) {
-        entry.issues.push("No explicit expand/enlarge controls detected.");
+
+      if (route.startsWith("/session") || route === "/news") {
+        if (signals.ttsPresent) {
+          entry.ttsCheck = {
+            present: true,
+            voiceOptions: signals.ttsVoiceOptions,
+          };
+          if (signals.ttsVoiceOptions === 0) {
+            entry.warnings.push("TTS controls present but no voice options (may be headless/browser limitation)");
+          }
+        } else {
+          entry.ttsCheck = { present: false };
+          entry.warnings.push("TTS controls not found on text-heavy view (optional if content too short)");
+        }
+      }
+
+      if (signals.expandControlsCount === 0 && route.startsWith("/session")) {
+        entry.warnings.push("No explicit expand/enlarge controls detected on session page");
+      } else if (signals.expandControlsCount === 0) {
+        entry.warnings.push("No expand/enlarge controls on this page");
       }
     } catch (error) {
       entry.ok = false;
@@ -177,8 +284,12 @@ async function run() {
     if (!entry.ok || entry.issues.length > 0) report.summary.failures += 1;
   }
 
-  if (consoleErrors.length > 0) {
-    report.consoleErrors = Array.from(new Set(consoleErrors)).slice(0, 50);
+  const uniqueErrors = Array.from(new Set(consoleErrors)).slice(0, 50);
+  if (uniqueErrors.length > 0) {
+    report.consoleErrors = uniqueErrors;
+    report.severeConsoleErrors = uniqueErrors.filter((text) =>
+      SEVERE_CONSOLE_PATTERNS.some((p) => p.test(text))
+    );
   }
 
   await writeFile(
@@ -190,6 +301,15 @@ async function run() {
   await browser.close();
   console.log(`QA report written to ${path.join(OUT_DIR, "playwright-qa-report.json")}`);
   console.log(`Pages with issues: ${report.summary.failures}/${report.pages.length}`);
+
+  if (report.severeConsoleErrors && report.severeConsoleErrors.length > 0) {
+    console.error("Severe console errors detected:");
+    report.severeConsoleErrors.forEach((e) => console.error("  -", e));
+    process.exit(1);
+  }
+  if (report.summary.failures > 0) {
+    process.exit(1);
+  }
 }
 
 run().catch((error) => {

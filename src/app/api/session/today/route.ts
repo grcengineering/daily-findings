@@ -37,6 +37,20 @@ export async function GET() {
     const todayCompletion = await prisma.sessionCompletion.findFirst({
       where: { topicId: topic.id, date: today },
     });
+    const todayDailySession = await prisma.dailySession.findUnique({
+      where: { date: today },
+      select: {
+        id: true,
+        topicId: true,
+        startedAt: true,
+        completed: true,
+      },
+    });
+    const inProgress =
+      !!todayDailySession &&
+      todayDailySession.topicId === sessionContent.topicId &&
+      !todayDailySession.completed &&
+      todayDailySession.startedAt != null;
 
     return NextResponse.json({
       session: {
@@ -46,6 +60,7 @@ export async function GET() {
         topicId: sessionContent.topicId,
         level: sessionContent.level,
         completed: todayCompletion != null,
+        inProgress,
         quizScore: todayCompletion?.quizScore ?? null,
         quizTotal: todayCompletion?.quizTotal ?? null,
       },

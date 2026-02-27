@@ -42,7 +42,6 @@ type AssessmentItem = QuizQuestion | CodeChallengeItem;
 interface QuizContent {
   questions: AssessmentItem[];
   citations?: Citation[];
-  confidenceScore?: number;
   flaggedClaims?: FlaggedClaim[];
 }
 

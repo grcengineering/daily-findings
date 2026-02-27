@@ -61,7 +61,6 @@ model SessionContent {
   scenarioContent String
   quizContent     String
   capstoneContent String?
-  confidenceScore Int?
   generatedAt     DateTime @default(now())
 }
 

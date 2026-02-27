@@ -59,27 +59,13 @@ jobs:
           npx wait-on http://127.0.0.1:3199 --timeout 60000
           npm run qa
 
-      - name: Validate release signing prerequisites
+      - name: Release signing prerequisites status
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          missing=0
-          for required in \
-            HAS_APPLE_CERTIFICATE \
-            HAS_APPLE_CERTIFICATE_PASSWORD \
-            HAS_APPLE_SIGNING_IDENTITY \
-            HAS_APPLE_NOTARY_APPLE_ID \
-            HAS_APPLE_NOTARY_TEAM_ID \
-            HAS_APPLE_NOTARY_PASSWORD
-          do
-            value=$(printenv "$required")
-            if [ "$value" != "true" ]; then
-              echo "Missing required secret for signed/notarized macOS release: $required"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "Tag releases require signing/notarization secrets."
-            exit 1
+          if [ "$HAS_APPLE_CERTIFICATE" = "true" ] && [ "$HAS_APPLE_CERTIFICATE_PASSWORD" = "true" ] && [ "$HAS_APPLE_SIGNING_IDENTITY" = "true" ] && [ "$HAS_APPLE_NOTARY_APPLE_ID" = "true" ] && [ "$HAS_APPLE_NOTARY_TEAM_ID" = "true" ] && [ "$HAS_APPLE_NOTARY_PASSWORD" = "true" ]; then
+            echo "Apple signing and notarization secrets detected: notarized release path enabled."
+          else
+            echo "Apple signing/notarization secrets not fully configured: unsigned macOS release path will be used."
           fi
 
   build-desktop:
@@ -159,6 +145,33 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
+
+      - name: Re-sign macOS app and rebuild DMG (unsigned fallback)
+        if: matrix.os == 'macos-latest' && (env.HAS_APPLE_CERTIFICATE != 'true' || env.HAS_APPLE_CERTIFICATE_PASSWORD != 'true' || env.HAS_APPLE_SIGNING_IDENTITY != 'true')
+        run: |
+          set -euo pipefail
+          APP_PATH=$(ls -1 src-tauri/target/release/bundle/macos/*.app 2>/dev/null | head -n 1 || true)
+          DMG_PATH=$(ls -1 src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null | head -n 1 || true)
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ]; then
+            echo "Expected macOS app and DMG artifacts were not found."
+            exit 1
+          fi
+
+          # Ad-hoc sign the app in unsigned mode to prevent invalid-signature DMGs.
+          codesign --remove-signature "$APP_PATH" || true
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+          APP_NAME=$(basename "$APP_PATH")
+          DMG_DIR=$(dirname "$DMG_PATH")
+          DMG_NAME=$(basename "$DMG_PATH")
+          VOL_NAME="${APP_NAME%.app}"
+          TEMP_DMG="$DMG_DIR/$DMG_NAME.tmp"
+
+          rm -f "$TEMP_DMG"
+          hdiutil create -volname "$VOL_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "$TEMP_DMG"
+          mv "$TEMP_DMG" "$DMG_PATH"
+          hdiutil verify "$DMG_PATH"
 
       - name: Sign Windows installers (optional)
         if: matrix.os == 'windows-latest' && env.HAS_WIN_SIGN_CERT == 'true' && env.HAS_WIN_SIGN_PASSWORD == 'true'

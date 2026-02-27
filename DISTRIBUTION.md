@@ -17,7 +17,7 @@ Release runbook for Daily Findings desktop builds (macOS + Windows). For install
 ## Secrets (Optional)
 
 Set these in Settings -> Secrets and variables -> Actions to enable signing/notarization.
-Manual desktop builds can run without these secrets (unsigned), but tag releases (`v*`) now require the full macOS signing/notarization set and will fail fast if they are missing.
+Desktop builds and tag releases (`v*`) can run without these secrets (unsigned). If signing secrets are missing, the workflow uses an unsigned macOS fallback that ad-hoc re-signs and repacks the DMG to avoid invalid-signature artifacts.
 
 | Secret | Platform | Purpose |
 |--------|----------|---------|

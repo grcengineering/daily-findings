@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getNextTopic } from "@/lib/curriculum";
+import { getAllPaths, getEffectivePathId, getNextTopic, getPathById, getRecommendationReason } from "@/lib/curriculum";
 
 function todayDateString(): string {
   const d = new Date();
@@ -16,6 +16,33 @@ export async function GET() {
 
     const allProgress = await prisma.topicProgress.findMany();
     const completedIds = allProgress.map((p) => p.topicId);
+    const topicQuizAverages = Object.fromEntries(
+      allProgress.map((row) => {
+        let scores: number[] = [];
+        try {
+          scores = JSON.parse(row.quizScores) as number[];
+        } catch {
+          scores = [];
+        }
+        const avg = scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0;
+        return [row.topicId, avg];
+      })
+    );
+    const weakTopicIds = allProgress
+      .filter((row) => {
+        try {
+          const scores = JSON.parse(row.quizScores) as number[];
+          if (scores.length === 0) return false;
+          const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+          return avg < 75;
+        } catch {
+          return false;
+        }
+      })
+      .map((row) => row.topicId);
+    const userStats = await prisma.userStats.findUnique({ where: { id: "user" } });
+    const effectivePathId = getEffectivePathId(userStats?.selectedPathId ?? null);
+    const selectedPath = getPathById(effectivePathId);
     const lastCompletion = await prisma.sessionCompletion.findFirst({
       orderBy: { completedAt: "desc" },
     });
@@ -23,7 +50,17 @@ export async function GET() {
       ? (await prisma.sessionContent.findFirst({ where: { topicId: lastCompletion.topicId } }))?.domain ?? null
       : null;
 
-    const topic = getNextTopic(completedIds, lastDomain);
+    const topic = getNextTopic(completedIds, lastDomain, {
+      pathModuleIds: selectedPath?.module_ids,
+      topicQuizAverages,
+      weakTopicIds,
+    });
+    const recommendationReason = getRecommendationReason({
+      topic,
+      completedTopicIds: completedIds,
+      pathId: effectivePathId,
+      topicQuizAverages,
+    });
 
     const sessionContent = await prisma.sessionContent.findUnique({
       where: { topicId: topic.id },
@@ -63,6 +100,10 @@ export async function GET() {
         inProgress,
         quizScore: todayCompletion?.quizScore ?? null,
         quizTotal: todayCompletion?.quizTotal ?? null,
+        recommendationReason,
+        selectedPathId: effectivePathId,
+        selectedPathTitle: selectedPath?.title ?? null,
+        availablePaths: getAllPaths(),
       },
     });
   } catch (error) {

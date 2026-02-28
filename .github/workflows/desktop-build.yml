@@ -255,6 +255,9 @@ jobs:
       - name: Verify build artifacts
         run: node scripts/verify-build.mjs ${{ matrix.os }}
 
+      - name: Run smoke checks
+        run: node scripts/smoke-tests.mjs ${{ matrix.os }}
+
       - name: Generate checksums
         run: node scripts/generate-checksums.mjs ${{ matrix.bundle_dirs }}
 

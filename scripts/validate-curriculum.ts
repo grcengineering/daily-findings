@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import * as fs from "fs";
 import * as path from "path";
+import { validateQuizDeterministic } from "../src/lib/quiz-validation";
 
 const VALID_MODULE_TYPES = ["core", "depth", "specialization", "capstone"] as const;
 
@@ -182,6 +183,11 @@ async function validatePrismaSessionContent(): Promise<string[]> {
         }
       }
       issues.push(...validateQuiz(row.topicId, row.quizContent));
+      issues.push(
+        ...validateQuizDeterministic(row.topicId, row.quizContent).map(
+          (issue) => `[DB] ${issue.message}`
+        )
+      );
     }
 
     return issues;

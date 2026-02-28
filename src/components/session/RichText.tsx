@@ -305,6 +305,44 @@ export function RichText({ text, className, showReadAloud = true }: RichTextProp
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function syncPreferencesFromApi() {
+      const response = await fetch("/api/user/preferences");
+      if (!response.ok || cancelled) return;
+      const payload = await response.json();
+      if (!cancelled) {
+        if (typeof payload?.ttsVoiceUri === "string" && payload.ttsVoiceUri.length > 0) {
+          setSelectedVoiceUri(payload.ttsVoiceUri);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("dailyfindings_tts_voice_uri", payload.ttsVoiceUri);
+          }
+        }
+        if (typeof payload?.ttsRate === "number" && payload.ttsRate >= 0.8 && payload.ttsRate <= 1.3) {
+          setSpeechRate(payload.ttsRate);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("dailyfindings_tts_rate", String(payload.ttsRate));
+          }
+        }
+      }
+    }
+    void syncPreferencesFromApi();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function persistPreferences(nextVoiceUri: string, nextRate: number) {
+    void fetch("/api/user/preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ttsVoiceUri: nextVoiceUri,
+        ttsRate: nextRate,
+      }),
+    });
+  }
+
   function startReading() {
     if (!canReadAloud) return;
     window.speechSynthesis.cancel();
@@ -365,6 +403,7 @@ export function RichText({ text, className, showReadAloud = true }: RichTextProp
                   if (typeof window !== "undefined") {
                     window.localStorage.setItem("dailyfindings_tts_voice_uri", next);
                   }
+                  persistPreferences(next, speechRate);
                 }}
                 className="h-9 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
               >
@@ -388,6 +427,7 @@ export function RichText({ text, className, showReadAloud = true }: RichTextProp
                 if (typeof window !== "undefined") {
                   window.localStorage.setItem("dailyfindings_tts_rate", String(next));
                 }
+                persistPreferences(selectedVoiceUri, next);
               }}
               className="h-9 rounded-md border border-input bg-background px-2 text-xs"
             >

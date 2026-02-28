@@ -54,15 +54,20 @@ let generateLesson: GenerateFn;
 let generateScenario: GenerateFn;
 let generateQuiz: GenerateFn;
 let generateCapstone: ((input: TopicInput, domain: string, level: string) => Promise<unknown>) | undefined;
+let validateQuizDeterministic:
+  | ((topicId: string, quizRaw: string) => Array<{ code: string; message: string }>)
+  | undefined;
 
 async function loadModules() {
   const curriculum = await import("../src/lib/curriculum");
   const ai = await import("../src/lib/ai");
+  const quizValidation = await import("../src/lib/quiz-validation");
   getAllTopics = curriculum.getAllTopics;
   generateLesson = ai.generateLesson;
   generateScenario = ai.generateScenario;
   generateQuiz = ai.generateQuiz;
   generateCapstone = ai.generateCapstone;
+  validateQuizDeterministic = quizValidation.validateQuizDeterministic;
 }
 
 async function processTopic(
@@ -101,6 +106,16 @@ async function processTopic(
         ? generateCapstone(input, topic.domain, topic.level)
         : Promise.resolve(null),
     ]);
+    if (validateQuizDeterministic) {
+      const quizIssues = validateQuizDeterministic(topic.id, JSON.stringify(quiz));
+      if (quizIssues.length > 0) {
+        console.log(
+          `${label} WARN ${topic.title} -- quiz validation: ${quizIssues
+            .map((issue) => issue.code)
+            .join(", ")}`
+        );
+      }
+    }
 
     try {
       await prisma.sessionContent.create({

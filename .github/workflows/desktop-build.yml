@@ -142,9 +142,13 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
       - name: Build desktop bundles
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-        run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
+        run: |
+          if [ "${{ matrix.os }}" = "macos-latest" ] && [ "$HAS_APPLE_SIGNING_IDENTITY" = "true" ]; then
+            export APPLE_SIGNING_IDENTITY="${{ secrets.APPLE_SIGNING_IDENTITY }}"
+          else
+            unset APPLE_SIGNING_IDENTITY
+          fi
+          npm run tauri:build -- --bundles ${{ matrix.bundles }}
 
       - name: Re-sign macOS app and rebuild DMG (unsigned fallback)
         if: matrix.os == 'macos-latest' && (env.HAS_APPLE_CERTIFICATE != 'true' || env.HAS_APPLE_CERTIFICATE_PASSWORD != 'true' || env.HAS_APPLE_SIGNING_IDENTITY != 'true')

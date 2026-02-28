@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getNextTopic, getMissingPrerequisites, getTopicById } from "@/lib/curriculum";
+import {
+  getEffectivePathId,
+  getMissingPrerequisites,
+  getNextTopic,
+  getPathById,
+  getRecommendationReason,
+  getTopicById,
+} from "@/lib/curriculum";
 
 function safeJsonParse(json: string, fallback: unknown = null) {
   try {
@@ -20,6 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     let sessionContent;
+    let recommendationReason: string | null = null;
 
     if (topicId) {
       if (!overridePrereq) {
@@ -54,14 +62,50 @@ export async function GET(request: NextRequest) {
     } else {
       const allProgress = await prisma.topicProgress.findMany();
       const completedIds = allProgress.map((p) => p.topicId);
+      const topicQuizAverages = Object.fromEntries(
+        allProgress.map((row) => {
+          let scores: number[] = [];
+          try {
+            scores = JSON.parse(row.quizScores) as number[];
+          } catch {
+            scores = [];
+          }
+          const avg = scores.length > 0 ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0;
+          return [row.topicId, avg];
+        })
+      );
+      const weakTopicIds = allProgress
+        .filter((row) => {
+          try {
+            const scores = JSON.parse(row.quizScores) as number[];
+            if (scores.length === 0) return false;
+            const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+            return avg < 75;
+          } catch {
+            return false;
+          }
+        })
+        .map((row) => row.topicId);
       const lastCompletion = await prisma.sessionCompletion.findFirst({
         orderBy: { completedAt: "desc" },
       });
       const lastDomain = lastCompletion
         ? (await prisma.sessionContent.findFirst({ where: { topicId: lastCompletion.topicId } }))?.domain ?? null
         : null;
-
-      const topic = getNextTopic(completedIds, lastDomain);
+      const userStats = await prisma.userStats.findUnique({ where: { id: "user" } });
+      const effectivePathId = getEffectivePathId(userStats?.selectedPathId ?? null);
+      const selectedPath = getPathById(effectivePathId);
+      const topic = getNextTopic(completedIds, lastDomain, {
+        pathModuleIds: selectedPath?.module_ids,
+        topicQuizAverages,
+        weakTopicIds,
+      });
+      recommendationReason = getRecommendationReason({
+        topic,
+        completedTopicIds: completedIds,
+        pathId: effectivePathId,
+        topicQuizAverages,
+      });
 
       sessionContent = await prisma.sessionContent.findUnique({
         where: { topicId: topic.id },
@@ -97,6 +141,7 @@ export async function GET(request: NextRequest) {
         completed: todayCompletion != null,
         quizScore: todayCompletion?.quizScore ?? null,
         quizTotal: todayCompletion?.quizTotal ?? null,
+        recommendationReason,
       },
       { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
     );

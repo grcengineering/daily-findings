@@ -55,6 +55,13 @@ interface StatsData {
 interface SessionStatus {
   hasActiveSession: boolean;
   sessionCompleted: boolean;
+  recommendationReason?: string | null;
+  selectedPathTitle?: string | null;
+}
+
+interface LearningPath {
+  path_id: string;
+  title: string;
 }
 
 interface NewsMeta {
@@ -124,6 +131,8 @@ export default function DashboardPage() {
     stale: false,
   });
   const [loading, setLoading] = useState(true);
+  const [paths, setPaths] = useState<LearningPath[]>([]);
+  const [selectedPathId, setSelectedPathId] = useState<string>("");
 
   useEffect(() => {
     async function load() {
@@ -140,7 +149,11 @@ export default function DashboardPage() {
           setSession({
             hasActiveSession: Boolean(todayData.session?.inProgress),
             sessionCompleted: todayData.session?.completed ?? false,
+            recommendationReason: todayData.session?.recommendationReason ?? null,
+            selectedPathTitle: todayData.session?.selectedPathTitle ?? null,
           });
+          setPaths(todayData.session?.availablePaths ?? []);
+          setSelectedPathId(todayData.session?.selectedPathId ?? "");
         }
       } catch {
         // API not available yet — will show skeleton then empty state
@@ -187,6 +200,16 @@ export default function DashboardPage() {
   const domainProgress = data?.domainProgress ?? {};
   const avgScore = computeAverageScore(sessions);
 
+  async function updatePath(pathId: string) {
+    setSelectedPathId(pathId);
+    await fetch("/api/user/path", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pathId }),
+    });
+    window.location.reload();
+  }
+
   return (
     <PageTransition>
       <div className="p-6 md:p-8 max-w-7xl mx-auto">
@@ -196,10 +219,28 @@ export default function DashboardPage() {
           <div className="space-y-10">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <HeroGreeting streak={stats.currentStreak} />
-              <StartSessionCTA
-                hasActiveSession={session.hasActiveSession}
-                sessionCompleted={session.sessionCompleted}
-              />
+              <div className="space-y-2">
+                {paths.length > 0 ? (
+                  <select
+                    aria-label="Learning path"
+                    value={selectedPathId}
+                    onChange={(event) => void updatePath(event.target.value)}
+                    className="h-9 rounded-md border border-input bg-background px-2 text-xs min-w-[240px]"
+                  >
+                    {paths.map((path) => (
+                      <option key={path.path_id} value={path.path_id}>
+                        {path.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <StartSessionCTA
+                  hasActiveSession={session.hasActiveSession}
+                  sessionCompleted={session.sessionCompleted}
+                  recommendationReason={session.recommendationReason}
+                  selectedPathTitle={session.selectedPathTitle}
+                />
+              </div>
             </div>
 
             <StatsRow stats={stats} averageScore={avgScore} />

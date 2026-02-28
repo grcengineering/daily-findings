@@ -46,8 +46,19 @@ interface QuizContent {
 }
 
 interface QuizViewProps {
+  topicId: string;
   quiz: QuizContent;
-  onComplete: (score: number, total: number) => void;
+  onComplete: (
+    score: number,
+    total: number,
+    questionResults: Array<{
+      questionId: string;
+      questionIndex: number;
+      format: string;
+      correct: boolean;
+      selectedIndex: number | null;
+    }>
+  ) => void;
 }
 
 type AnswerRecord = {
@@ -55,7 +66,7 @@ type AnswerRecord = {
   correct: boolean;
 };
 
-export function QuizView({ quiz, onComplete }: QuizViewProps) {
+export function QuizView({ topicId, quiz, onComplete }: QuizViewProps) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -80,7 +91,7 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
     return (
       <div className="max-w-[700px] mx-auto py-8 px-4 text-center">
         <p className="text-muted-foreground mb-4">No quiz questions available for this session.</p>
-        <Button onClick={() => onComplete(0, 0)}>Skip Quiz</Button>
+        <Button onClick={() => onComplete(0, 0, [])}>Skip Quiz</Button>
       </div>
     );
   }
@@ -100,6 +111,19 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
     });
 
     if (correct) fireConfetti();
+
+    void fetch("/api/quiz/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topicId,
+        questionId: current.id,
+        questionIndex: currentIdx,
+        format: current.format ?? "multiple_choice",
+        selectedIndex: optionIdx,
+        correct,
+      }),
+    });
   };
 
   const handleNext = () => {
@@ -119,10 +143,29 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
       next.set(currentIdx, { selectedIndex: null, correct: passed });
       return next;
     });
+    void fetch("/api/quiz/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topicId,
+        questionId: current.id,
+        questionIndex: currentIdx,
+        format: "code_challenge",
+        selectedIndex: null,
+        correct: passed,
+      }),
+    });
   };
 
   const handleFinish = () => {
-    onComplete(score, total);
+    const questionResults = questions.map((question, index) => ({
+      questionId: question.id,
+      questionIndex: index,
+      format: question.format ?? "multiple_choice",
+      correct: answers.get(index)?.correct ?? false,
+      selectedIndex: answers.get(index)?.selectedIndex ?? null,
+    }));
+    onComplete(score, total, questionResults);
   };
 
   if (showResults) {

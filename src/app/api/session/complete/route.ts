@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { topicId, quizScore, quizTotal } = body;
+    const { topicId, quizScore, quizTotal, capstoneRubricScores, recommendationReason } = body;
 
     if (
       typeof topicId !== "string" ||
@@ -81,6 +81,12 @@ export async function POST(request: NextRequest) {
           date: today,
           quizScore,
           quizTotal,
+          capstoneRubricScores:
+            capstoneRubricScores && typeof capstoneRubricScores === "object"
+              ? JSON.stringify(capstoneRubricScores)
+              : null,
+          recommendationReason:
+            typeof recommendationReason === "string" ? recommendationReason : null,
         },
       });
     } catch (createError: unknown) {
@@ -175,6 +181,55 @@ export async function POST(request: NextRequest) {
         lastSessionDate: today,
       },
     });
+
+    await prisma.capstoneRubricState.deleteMany({
+      where: { topicId, date: today },
+    });
+
+    if (Array.isArray(body?.questionResults)) {
+      for (const result of body.questionResults as Array<{
+        questionId: string;
+        questionIndex: number;
+        format?: string;
+        correct: boolean;
+        selectedIndex?: number | null;
+      }>) {
+        if (!result?.questionId || typeof result.questionIndex !== "number") continue;
+        const existing = await prisma.questionAnalytics.findUnique({
+          where: { topicId_questionId: { topicId, questionId: result.questionId } },
+        });
+        const optionStats = existing?.optionStats ? JSON.parse(existing.optionStats) as Record<string, number> : {};
+        const key = String(result.selectedIndex ?? "null");
+        optionStats[key] = (optionStats[key] ?? 0) + 1;
+        const attemptCount = (existing?.attemptCount ?? 0) + 1;
+        const correctCount = (existing?.correctRate ?? 0) * (existing?.attemptCount ?? 0) + (result.correct ? 1 : 0);
+        await prisma.questionAnalytics.upsert({
+          where: { topicId_questionId: { topicId, questionId: result.questionId } },
+          create: {
+            topicId,
+            questionId: result.questionId,
+            questionIndex: result.questionIndex,
+            format: result.format ?? "multiple_choice",
+            attemptCount: 1,
+            correctRate: result.correct ? 1 : 0,
+            discrimination: null,
+            firstTryCorrect: result.correct ? 1 : 0,
+            retryCount: result.correct ? 0 : 1,
+            optionStats: JSON.stringify(optionStats),
+          },
+          update: {
+            questionIndex: result.questionIndex,
+            format: result.format ?? existing?.format ?? "multiple_choice",
+            attemptCount,
+            correctRate: attemptCount > 0 ? correctCount / attemptCount : null,
+            firstTryCorrect:
+              (existing?.firstTryCorrect ?? 0) + (result.correct && !existing ? 1 : 0),
+            retryCount: (existing?.retryCount ?? 0) + (!result.correct ? 1 : 0),
+            optionStats: JSON.stringify(optionStats),
+          },
+        });
+      }
+    }
 
     return NextResponse.json(updatedStats, {
       headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },

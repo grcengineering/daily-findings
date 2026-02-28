@@ -45,6 +45,20 @@ interface CurriculumDomainFile {
   modules: CurriculumModule[];
 }
 
+interface PathBadgeDefinition {
+  badge_id: string;
+  title: string;
+  criteria: string[];
+  minimum_quiz_average?: number;
+}
+
+interface PathDefinition {
+  path_id: string;
+  title: string;
+  module_ids: string[];
+  badges?: PathBadgeDefinition[];
+}
+
 const DOMAIN_FILES: CurriculumDomainFile[] = [
   privacy as CurriculumDomainFile,
   frameworks as CurriculumDomainFile,
@@ -173,7 +187,48 @@ export function getAllTopics(): TopicInfo[] {
 }
 
 export function getBridgeTrack() {
-  return (pathsData as { paths: unknown[] }).paths;
+  return (pathsData as { paths: PathDefinition[] }).paths;
+}
+
+export function getAllPaths(): PathDefinition[] {
+  return (pathsData as { paths: PathDefinition[] }).paths ?? [];
+}
+
+export function getPathById(pathId: string | null | undefined): PathDefinition | null {
+  if (!pathId) return null;
+  return getAllPaths().find((path) => path.path_id === pathId) ?? null;
+}
+
+export function getEffectivePathId(pathId: string | null | undefined): string | null {
+  const paths = getAllPaths();
+  if (paths.length === 0) return null;
+  const selected = getPathById(pathId);
+  return selected?.path_id ?? paths[0].path_id;
+}
+
+export function getPathBadgeStatus(
+  pathId: string | null | undefined,
+  completedTopicIds: string[],
+  topicQuizAverages: Record<string, number>
+) {
+  const path = getPathById(getEffectivePathId(pathId));
+  if (!path) return [];
+  const completed = new Set(completedTopicIds);
+  return (path.badges ?? []).map((badge) => {
+    const earnedByCriteria = badge.criteria.every((topicId) => completed.has(topicId));
+    const minAverage = badge.minimum_quiz_average ?? null;
+    const averageSatisfied =
+      minAverage == null ||
+      badge.criteria.every((topicId) => (topicQuizAverages[topicId] ?? 0) >= minAverage);
+    return {
+      id: badge.badge_id,
+      name: badge.title,
+      description: `Complete ${badge.criteria.length} modules in ${path.title}`,
+      earned: earnedByCriteria && averageSatisfied,
+      pathId: path.path_id,
+      minimumQuizAverage: minAverage,
+    };
+  });
 }
 
 /**
@@ -186,9 +241,18 @@ export function getBridgeTrack() {
  */
 export function getNextTopic(
   completedTopicIds: string[],
-  lastDomain: string | null
+  lastDomain: string | null,
+  options?: {
+    pathModuleIds?: string[];
+    topicQuizAverages?: Record<string, number>;
+    weakTopicIds?: string[];
+  }
 ): TopicInfo {
-  const all = getAllTopics();
+  const allTopics = getAllTopics();
+  const pathSet = options?.pathModuleIds?.length
+    ? new Set(options.pathModuleIds)
+    : null;
+  const all = pathSet ? allTopics.filter((t) => pathSet.has(t.id)) : allTopics;
   const completed = new Set(completedTopicIds);
 
   let remaining = all.filter((t) => !completed.has(t.id));
@@ -206,10 +270,29 @@ export function getNextTopic(
 
   const eligible = remaining.filter(meetsPrereqs);
   const pool = eligible.length > 0 ? eligible : remaining;
+  const weak = new Set(options?.weakTopicIds ?? []);
+  const averages = options?.topicQuizAverages ?? {};
 
   pool.sort((a, b) => {
+    const aWeak = weak.has(a.id) ? 0 : 1;
+    const bWeak = weak.has(b.id) ? 0 : 1;
+    if (aWeak !== bWeak) return aWeak - bWeak;
+
     const levelDiff = levelRank(a.level) - levelRank(b.level);
     if (levelDiff !== 0) return levelDiff;
+
+    const aPrereqScore =
+      a.prerequisites.length > 0
+        ? a.prerequisites.reduce((sum, id) => sum + (averages[id] ?? 75), 0) /
+          a.prerequisites.length
+        : 75;
+    const bPrereqScore =
+      b.prerequisites.length > 0
+        ? b.prerequisites.reduce((sum, id) => sum + (averages[id] ?? 75), 0) /
+          b.prerequisites.length
+        : 75;
+    if (aPrereqScore !== bPrereqScore) return bPrereqScore - aPrereqScore;
+
     const moduleDiff = MODULE_TYPE_ORDER[a.moduleType] - MODULE_TYPE_ORDER[b.moduleType];
     if (moduleDiff !== 0) return moduleDiff;
     return a.title.localeCompare(b.title);
@@ -225,6 +308,36 @@ export function getNextTopic(
   }
 
   return pool[0];
+}
+
+export function getRecommendationReason(args: {
+  topic: TopicInfo;
+  completedTopicIds: string[];
+  pathId?: string | null;
+  topicQuizAverages?: Record<string, number>;
+}) {
+  const { topic, completedTopicIds, pathId, topicQuizAverages = {} } = args;
+  const path = getPathById(getEffectivePathId(pathId));
+  const completed = new Set(completedTopicIds);
+
+  if (topic.prerequisites.length > 0) {
+    const prereqList = topic.prerequisites.filter((id) => completed.has(id));
+    if (prereqList.length > 0) {
+      return `You completed prerequisite modules (${prereqList.slice(0, 2).join(", ")}), so this is the next logical step.`;
+    }
+  }
+
+  if (path && path.module_ids.includes(topic.id)) {
+    const nextIndex = path.module_ids.findIndex((id) => id === topic.id) + 1;
+    return `This module advances your ${path.title} track (${nextIndex}/${path.module_ids.length}).`;
+  }
+
+  const avg = topicQuizAverages[topic.id];
+  if (typeof avg === "number" && avg < 75) {
+    return "This module was selected for reinforcement because your recent quiz performance indicates a review opportunity.";
+  }
+
+  return `This module keeps you progressing through ${topic.level.toLowerCase()} content with recommended prerequisites satisfied.`;
 }
 
 /**

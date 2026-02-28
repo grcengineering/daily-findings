@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAllTopics } from "@/lib/curriculum";
+import { getAllTopics, getEffectivePathId, getPathBadgeStatus, getPathById } from "@/lib/curriculum";
 import { DOMAINS } from "@/lib/domain-colors";
 
 export async function GET() {
@@ -111,6 +111,22 @@ export async function GET() {
         s.quizScore === s.quizTotal
     );
 
+    const topicQuizAverages: Record<string, number> = {};
+    for (const progressRow of topicProgress) {
+      try {
+        const scores = JSON.parse(progressRow.quizScores) as number[];
+        if (scores.length > 0) {
+          topicQuizAverages[progressRow.topicId] =
+            scores.reduce((sum, score) => sum + score, 0) / scores.length;
+        }
+      } catch {
+        topicQuizAverages[progressRow.topicId] = 0;
+      }
+    }
+    const completedTopicIds = topicProgress.map((row) => row.topicId);
+    const effectivePathId = getEffectivePathId(stats.selectedPathId ?? null);
+    const pathInfo = getPathById(effectivePathId);
+
     const badges = [
       {
         id: "first_session",
@@ -157,6 +173,7 @@ export async function GET() {
           earned: dp ? dp.total > 0 && dp.completed >= dp.total : false,
         };
       }),
+      ...getPathBadgeStatus(effectivePathId, completedTopicIds, topicQuizAverages),
     ].map((b) => ({
       ...b,
       earnedDate: b.earned ? stats.lastSessionDate ?? undefined : undefined,
@@ -181,6 +198,8 @@ export async function GET() {
         })),
         allSessions,
         badges,
+        selectedPathId: effectivePathId,
+        selectedPathTitle: pathInfo?.title ?? null,
       },
       { headers }
     );

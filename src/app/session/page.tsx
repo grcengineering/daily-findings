@@ -97,6 +97,7 @@ interface SessionData {
   completed: boolean;
   quizScore: number | null;
   quizTotal: number | null;
+  recommendationReason?: string | null;
 }
 
 interface CompletionStats {
@@ -179,6 +180,56 @@ function SessionPageContent() {
     load();
   }, [overridePrereq, topicId]);
 
+  useEffect(() => {
+    if (!session) return;
+    const activeTopicId = session.topicId;
+    const sectionName =
+      currentSection === 0
+        ? "lesson"
+        : currentSection === 1
+          ? "scenario"
+          : currentSection === 2
+            ? "quiz"
+            : "capstone";
+
+    let cancelled = false;
+    async function restorePosition() {
+      const response = await fetch(
+        `/api/session/reading-position?topicId=${encodeURIComponent(activeTopicId)}&section=${encodeURIComponent(sectionName)}`
+      );
+      if (!response.ok || cancelled) return;
+      const payload = await response.json();
+      if (!cancelled && typeof payload?.scrollY === "number" && payload.scrollY > 0) {
+        window.requestAnimationFrame(() => {
+          window.scrollTo({ top: payload.scrollY, behavior: "auto" });
+        });
+      }
+    }
+    void restorePosition();
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void fetch("/api/session/reading-position", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topicId: activeTopicId,
+            section: sectionName,
+            scrollY: window.scrollY,
+          }),
+        });
+      }, 500);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [currentSection, session]);
+
   const completeSection = useCallback(
     (sectionIdx: number) => {
       setCompletedSections((prev) =>
@@ -196,7 +247,17 @@ function SessionPageContent() {
   );
 
   const handleQuizComplete = useCallback(
-    async (score: number, total: number) => {
+    async (
+      score: number,
+      total: number,
+      questionResults: Array<{
+        questionId: string;
+        questionIndex: number;
+        format: string;
+        correct: boolean;
+        selectedIndex: number | null;
+      }>
+    ) => {
       setQuizScore(score);
       setQuizTotal(total);
       setCompletedSections((prev) =>
@@ -214,6 +275,8 @@ function SessionPageContent() {
               topicId: session.topicId,
               quizScore: score,
               quizTotal: total,
+              questionResults,
+              recommendationReason: session.recommendationReason ?? null,
             }),
           });
           if (res.ok) {
@@ -228,7 +291,7 @@ function SessionPageContent() {
     [session]
   );
 
-  const handleCapstoneComplete = useCallback(async () => {
+  const handleCapstoneComplete = useCallback(async (capstoneRubricScores: Record<number, "excellent" | "acceptable" | "needs_work">) => {
     setCompletedSections((prev) => (prev.includes(3) ? prev : [...prev, 3]));
     if (session) {
       try {
@@ -239,6 +302,7 @@ function SessionPageContent() {
             topicId: session.topicId,
             quizScore,
             quizTotal,
+            capstoneRubricScores,
           }),
         });
         if (res.ok) {
@@ -378,6 +442,7 @@ function SessionPageContent() {
             exit={{ opacity: 0, x: -30 }}
           >
             <QuizView
+              topicId={session.topicId}
               quiz={session.quiz}
               onComplete={handleQuizComplete}
             />
@@ -392,7 +457,11 @@ function SessionPageContent() {
             animate="visible"
             exit={{ opacity: 0, x: -30 }}
           >
-            <CapstoneSection capstone={session.capstone} onComplete={handleCapstoneComplete} />
+            <CapstoneSection
+              topicId={session.topicId}
+              capstone={session.capstone}
+              onComplete={handleCapstoneComplete}
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -46,6 +46,9 @@ model UserStats {
   totalXp         Int     @default(0)
   currentLevel    Int     @default(1)
   lastSessionDate String?
+  selectedPathId  String?
+  ttsVoiceUri     String?
+  ttsRate         Float   @default(1.0)
 }
 
 model SessionContent {
@@ -65,14 +68,60 @@ model SessionContent {
 }
 
 model SessionCompletion {
-  id          String   @id @default(cuid())
-  topicId     String
-  date        String
-  quizScore   Int?
-  quizTotal   Int?
-  completedAt DateTime @default(now())
+  id                  String   @id @default(cuid())
+  topicId             String
+  date                String
+  quizScore           Int?
+  quizTotal           Int?
+  capstoneRubricScores String?
+  recommendationReason String?
+  completedAt         DateTime @default(now())
 
   @@unique([topicId, date])
   @@index([topicId])
   @@index([date])
+}
+
+model ReadingPosition {
+  id        String   @id @default(cuid())
+  topicId   String
+  section   String
+  scrollY   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([topicId, section])
+  @@index([topicId])
+}
+
+model CapstoneRubricState {
+  id           String   @id @default(cuid())
+  topicId      String
+  date         String
+  rubricScores String   @default("{}")
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@unique([topicId, date])
+  @@index([topicId])
+}
+
+model QuestionAnalytics {
+  id             String   @id @default(cuid())
+  topicId        String
+  questionId     String
+  questionIndex  Int
+  format         String
+  correctRate    Float?
+  attemptCount   Int      @default(0)
+  discrimination Float?
+  firstTryCorrect Int     @default(0)
+  retryCount     Int      @default(0)
+  optionStats    String   @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([topicId, questionId])
+  @@index([topicId])
+  @@index([questionId])
 }

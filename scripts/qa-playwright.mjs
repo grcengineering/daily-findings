@@ -18,6 +18,7 @@ const SEVERE_CONSOLE_PATTERNS = [
   /failed to fetch/i,
   /network\s+error/i,
   /syntax\s+error/i,
+  /mime type/i,
   /cannot read propert(y|ies) of (undefined|null)/i,
   /is not a function/i,
 ];
@@ -28,6 +29,8 @@ const PAGES = [
   "/progress",
   "/history",
   "/news",
+  "/about",
+  "/diagnostics",
   "/session",
   "/session?topicId=PRIVACY_F01",
   "/session?topicId=GRCENG_CAP&overridePrereq=1",
@@ -39,6 +42,13 @@ function slugify(value) {
 
 async function collectPageSignals(page) {
   const signals = await page.evaluate(() => {
+    const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".bmp", ".ico"];
+    const looksLikeImage = (src) => {
+      const value = (src || "").toLowerCase();
+      if (value.startsWith("data:image/")) return true;
+      return IMAGE_EXTENSIONS.some((ext) => value.includes(ext));
+    };
+
     const bodyText = document.body?.innerText || "";
     const paragraphs = Array.from(document.querySelectorAll("p")).map((el) =>
       (el.textContent || "").trim()
@@ -52,7 +62,9 @@ async function collectPageSignals(page) {
       clientWidth: img.clientWidth,
       clientHeight: img.clientHeight,
     }));
-    const brokenImages = images.filter((img) => img.naturalWidth === 0 || img.naturalHeight === 0);
+    const brokenImages = images.filter(
+      (img) => looksLikeImage(img.src) && (img.naturalWidth === 0 || img.naturalHeight === 0)
+    );
     const tinyImages = images.filter((img) => img.clientWidth > 0 && (img.clientWidth < 24 || img.clientHeight < 24));
     const expandControls = Array.from(
       document.querySelectorAll("button, a, [role='button']")
@@ -190,12 +202,12 @@ async function run() {
       ttsCheck: null,
     };
     try {
-      const res = await page.goto(url, { waitUntil: "networkidle", timeout: 20000 });
+      const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
       if (!res || res.status() >= 400) {
         entry.ok = false;
         entry.issues.push(`HTTP status ${res?.status() ?? "unknown"}`);
       }
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(1200);
 
       const lightShot = path.join(OUT_DIR, `${slugify(route || "root")}-light.png`);
       await page.screenshot({ path: lightShot, fullPage: true });

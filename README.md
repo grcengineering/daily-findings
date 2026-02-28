@@ -191,7 +191,7 @@ This gives recipients a fresh learner state but still includes pre-generated mod
 - Built app bundle:
   - `src-tauri/target/release/bundle/macos/Daily Findings.app`
 - Built installer:
-  - `src-tauri/target/release/bundle/dmg/Daily Findings_0.1.0_aarch64.dmg`
+  - `src-tauri/target/release/bundle/dmg/Daily Findings_<version>_aarch64.dmg`
 
 The current artifact is Apple Silicon (`aarch64`) unless an x64 build pipeline is added.
 
@@ -243,7 +243,14 @@ For public distribution, use a tag release (`v*`). When signing secrets are conf
 
 1. Download the DMG from the release artifacts (or the `.app` bundle directly).
 2. Open the DMG and drag **Daily Findings** into Applications.
-3. On first launch, if macOS blocks the app (unsigned or unverified), open **System Settings → Privacy & Security** and choose **Open Anyway**, or right‑click the app and select **Open**.
+3. On first launch, if macOS blocks the app (unsigned or unverified), use one of these:
+   - right-click `Daily Findings.app` -> **Open** -> **Open**
+   - or open **System Settings -> Privacy & Security** and click **Open Anyway**
+4. If macOS still blocks launch from quarantine, run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Daily Findings.app"
+```
 
 ### Windows
 
@@ -271,7 +278,7 @@ If the files match, the download is intact. The file paths must match the extrac
 
 ## Versioning Cadence
 
-Versions follow semantic versioning (e.g. `0.1.0`). Release tags use the `v` prefix (e.g. `v0.1.0`). Pushing a tag triggers the desktop build workflow and produces artifacts for that version. There is no fixed schedule; releases are cut as needed.
+Versions follow semantic versioning (e.g. `0.1.8`). Release tags use the `v` prefix (e.g. `v0.1.8`). Pushing a tag triggers the desktop build workflow and produces artifacts for that version. There is no fixed schedule; releases are cut as needed.
 
 ---
 

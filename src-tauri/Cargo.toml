@@ -1,6 +1,6 @@
 [package]
 name = "grc-daily-desktop"
-version = "0.1.0"
+version = "0.1.8"
 description = "GRC Learning Platform desktop wrapper"
 authors = ["Chad Fryer"]
 edition = "2021"

@@ -328,6 +328,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          body: |
+            ## Install notes (important)
+
+            macOS builds may be unsigned in this release pipeline when Apple signing secrets are not configured.
+
+            - Open the `.dmg` and drag **Daily Findings** to Applications.
+            - First launch: right-click `Daily Findings.app` -> **Open** -> **Open**.
+            - If still blocked, open **System Settings -> Privacy & Security** and click **Open Anyway**.
+            - If quarantine still blocks launch, run:
+              `xattr -dr com.apple.quarantine "/Applications/Daily Findings.app"`
+
+            Windows builds may be unsigned when Windows signing secrets are not configured.
+
+            - Run the `.exe` or `.msi` installer.
+            - If SmartScreen appears, click **More info** -> **Run anyway**.
+
           files: |
             release-assets/daily-findings-macos/dmg/*.dmg
             release-assets/daily-findings-windows/nsis/*.exe

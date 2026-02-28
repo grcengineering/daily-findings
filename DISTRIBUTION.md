@@ -49,6 +49,22 @@ After a successful run:
 - **daily-findings-macos** / **daily-findings-windows**: Bundle files (dmg, nsis, msi)
 - **daily-findings-macos-checksums** / **daily-findings-windows-checksums**: `CHECKSUMS.txt` (SHA256)
 
+## End-User Launch Guidance (Unsigned Builds)
+
+If signing/notarization secrets are not configured, installers are published as unsigned. Include this guidance in release notes:
+
+- **macOS**
+  1. Open the `.dmg` and drag **Daily Findings** to Applications.
+  2. First launch: right-click `Daily Findings.app` -> **Open** -> **Open**.
+  3. If still blocked, open **System Settings -> Privacy & Security** and click **Open Anyway**.
+  4. If quarantine still blocks launch, run:
+     ```bash
+     xattr -dr com.apple.quarantine "/Applications/Daily Findings.app"
+     ```
+- **Windows**
+  1. Run the `.exe` or `.msi`.
+  2. If SmartScreen appears for an unsigned installer, click **More info** -> **Run anyway**.
+
 ## Artifact Verification
 
 1. Download the bundle artifact and checksums artifact.

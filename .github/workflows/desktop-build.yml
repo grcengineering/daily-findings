@@ -142,6 +142,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
       - name: Build desktop bundles
+        shell: bash
         run: |
           if [ "${{ matrix.os }}" = "macos-latest" ] && [ "$HAS_APPLE_SIGNING_IDENTITY" = "true" ]; then
             export APPLE_SIGNING_IDENTITY="${{ secrets.APPLE_SIGNING_IDENTITY }}"
@@ -154,15 +155,17 @@ jobs:
         if: matrix.os == 'macos-latest' && (env.HAS_APPLE_CERTIFICATE != 'true' || env.HAS_APPLE_CERTIFICATE_PASSWORD != 'true' || env.HAS_APPLE_SIGNING_IDENTITY != 'true')
         run: |
           set -euo pipefail
-          APP_PATH=$(ls -1 src-tauri/target/release/bundle/macos/*.app 2>/dev/null | head -n 1 || true)
-          DMG_PATH=$(ls -1 src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null | head -n 1 || true)
+          shopt -s nullglob
+          apps=(src-tauri/target/release/bundle/macos/*.app)
+          dmgs=(src-tauri/target/release/bundle/dmg/*.dmg)
+          APP_PATH="${apps[0]:-}"
+          DMG_PATH="${dmgs[0]:-}"
           if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ]; then
             echo "Expected macOS app and DMG artifacts were not found."
             exit 1
           fi
 
           # Ad-hoc sign the app in unsigned mode to prevent invalid-signature DMGs.
-          codesign --remove-signature "$APP_PATH" || true
           codesign --force --deep --sign - "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 

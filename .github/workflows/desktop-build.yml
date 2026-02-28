@@ -141,15 +141,15 @@ jobs:
           security import /tmp/codesign.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
-      - name: Build desktop bundles
-        shell: bash
-        run: |
-          if [ "${{ matrix.os }}" = "macos-latest" ] && [ "$HAS_APPLE_SIGNING_IDENTITY" = "true" ]; then
-            export APPLE_SIGNING_IDENTITY="${{ secrets.APPLE_SIGNING_IDENTITY }}"
-          else
-            unset APPLE_SIGNING_IDENTITY
-          fi
-          npm run tauri:build -- --bundles ${{ matrix.bundles }}
+      - name: Build desktop bundles (with Apple identity)
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_SIGNING_IDENTITY == 'true'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
+
+      - name: Build desktop bundles (default)
+        if: matrix.os != 'macos-latest' || env.HAS_APPLE_SIGNING_IDENTITY != 'true'
+        run: npm run tauri:build -- --bundles ${{ matrix.bundles }}
 
       - name: Re-sign macOS app and rebuild DMG (unsigned fallback)
         if: matrix.os == 'macos-latest' && (env.HAS_APPLE_CERTIFICATE != 'true' || env.HAS_APPLE_CERTIFICATE_PASSWORD != 'true' || env.HAS_APPLE_SIGNING_IDENTITY != 'true')
@@ -173,7 +173,7 @@ jobs:
           DMG_DIR=$(dirname "$DMG_PATH")
           DMG_NAME=$(basename "$DMG_PATH")
           VOL_NAME="${APP_NAME%.app}"
-          TEMP_DMG="$DMG_DIR/$DMG_NAME.tmp"
+          TEMP_DMG="$DMG_DIR/unsigned-repacked.dmg"
 
           rm -f "$TEMP_DMG"
           hdiutil create -volname "$VOL_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "$TEMP_DMG"

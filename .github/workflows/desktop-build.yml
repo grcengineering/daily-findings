@@ -24,11 +24,16 @@ jobs:
       HAS_WIN_SIGN_CERT: ${{ secrets.WIN_SIGN_CERT != '' }}
       HAS_WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD != '' }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: npm
@@ -107,17 +112,22 @@ jobs:
       HAS_WIN_SIGN_PASSWORD: ${{ secrets.WIN_SIGN_PASSWORD != '' }}
 
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: npm
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
 
       - name: Install dependencies
         run: npm ci
@@ -262,13 +272,13 @@ jobs:
         run: node scripts/generate-checksums.mjs ${{ matrix.bundle_dirs }}
 
       - name: Upload checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ matrix.artifact_name }}-checksums
           path: CHECKSUMS.txt
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_paths }}
@@ -294,26 +304,31 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: daily-findings-macos
           path: release-assets/daily-findings-macos
 
       - name: Download macOS checksums
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: daily-findings-macos-checksums
           path: release-assets/daily-findings-macos-checksums
 
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: daily-findings-windows
           path: release-assets/daily-findings-windows
 
       - name: Download Windows checksums
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: daily-findings-windows-checksums
           path: release-assets/daily-findings-windows-checksums
@@ -325,7 +340,7 @@ jobs:
           cp release-assets/daily-findings-windows-checksums/CHECKSUMS.txt release-assets/publish/daily-findings-windows-CHECKSUMS.txt
 
       - name: Create GitHub release with assets
-        uses: softprops/action-gh-release@v2
+        uses: step-security/action-gh-release@d45511d7589f080cf54961ff056b9705a74fd160 # v2.5.0
         with:
           generate_release_notes: true
           body: |

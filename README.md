@@ -31,6 +31,31 @@ If `doctor:tauri` fails, it prints exactly what to install next (for example Rus
 
 ---
 
+## New User Quickstart (Non-Technical)
+
+If you just want to install and use the app, follow these steps:
+
+1. Open the latest release page:
+   - https://github.com/grcengineering/daily-findings/releases/latest
+2. Download your installer:
+   - macOS: `.dmg`
+   - Windows: `.exe` (or `.msi`)
+3. Install:
+   - macOS: open the `.dmg`, then drag **Daily Findings** to **Applications**
+   - Windows: run the `.exe` or `.msi` and follow the prompts
+4. First launch prompts (if installer is unsigned):
+   - macOS: right-click `Daily Findings.app` -> **Open** -> **Open**
+   - macOS alternate: **System Settings -> Privacy & Security** -> **Open Anyway**
+   - Windows: if SmartScreen appears, click **More info** -> **Run anyway**
+5. Start learning:
+   - Open the app, click **Start Session** (or **Continue Session**), and complete your first module.
+
+No terminal or coding setup is required for this install path.
+
+For reusable GitHub repo-description/wiki copy, see `COMMUNITY_QUICKSTART_COPY.md`.
+
+---
+
 ## Current Scope (Important)
 
 This repository currently ships with the **legacy curriculum shape**:

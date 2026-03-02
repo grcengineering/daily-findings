@@ -164,6 +164,49 @@ Default dev URL is typically `http://localhost:3000` unless overridden.
 
 ---
 
+## Web App Dev Quickstart (No DMG Required)
+
+If your company blocks unsigned desktop installers, run Daily Findings in browser dev mode:
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create `.env.local`:
+
+```bash
+DATABASE_URL="file:./prisma/dev.db"
+```
+
+If you want AI generation features, add your `ANTHROPIC_API_KEY` to your local environment configuration.
+
+3. Initialize database and seed module content:
+
+```bash
+npx prisma db push
+npm run library:seed:expanded
+```
+
+4. Start the web app:
+
+```bash
+npm run dev
+```
+
+5. Open:
+
+```text
+http://localhost:3000
+```
+
+Notes:
+- `ANTHROPIC_API_KEY` is only required for AI content-generation paths.
+- The browser mode supports regular learning workflows without installing the desktop app.
+
+---
+
 ## Desktop Development & Build (Tauri)
 
 Before building from source, run:

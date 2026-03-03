@@ -1,3 +1,5 @@
+New release and updated content will be delivered tomorrow. I found an issue with the current release.
+
 # Daily Findings (GRC Learning Platform)
 
 Daily Findings is a GRC training platform with two runtime modes:

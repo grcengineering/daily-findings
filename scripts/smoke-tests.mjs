@@ -26,9 +26,68 @@ async function assertFileHealthy(filePath, label) {
   }
 }
 
+function verifyBundledDatabase(dbPath) {
+  const script = `
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+prisma.sessionContent
+  .count()
+  .then((count) => {
+    if (!Number.isFinite(count) || count < 1) {
+      console.error("SessionContent count is invalid:", count);
+      process.exit(2);
+    }
+    console.log(count);
+  })
+  .catch((error) => {
+    console.error(error?.message || String(error));
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
+`;
+  const result = spawnSync(process.execPath, ["-e", script], {
+    stdio: "pipe",
+    encoding: "utf-8",
+    env: {
+      ...process.env,
+      DATABASE_URL: `file:${dbPath}`,
+    },
+  });
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`Bundled DB check failed: ${result.stderr || result.stdout}`);
+  }
+}
+
+async function verifySidecarResources() {
+  const sidecarDir = path.join(root, "src-tauri", "resources", "next-standalone");
+  const dbCandidates = [
+    path.join(sidecarDir, "dev.db"),
+    path.join(sidecarDir, "prisma", "dev.db"),
+    path.join(sidecarDir, "prisma", "prisma", "dev.db"),
+  ];
+  const existing = [];
+  for (const candidate of dbCandidates) {
+    try {
+      const info = await stat(candidate);
+      existing.push({ path: candidate, size: info.size });
+    } catch {
+      // candidate does not exist
+    }
+  }
+  if (existing.length === 0) {
+    throw new Error(`No bundled sidecar DB found. Checked: ${dbCandidates.join(", ")}`);
+  }
+  const primary = existing.sort((a, b) => b.size - a.size)[0];
+  if (primary.size < 128 * 1024) {
+    throw new Error(`Bundled sidecar DB looks too small (${primary.size} bytes): ${primary.path}`);
+  }
+  verifyBundledDatabase(primary.path);
+}
+
 async function runMacSmoke() {
   const dmg = await firstFile("src-tauri/target/release/bundle/dmg", ".dmg");
   await assertFileHealthy(dmg, "DMG");
+  await verifySidecarResources();
   const verify = run("hdiutil", ["verify", dmg]);
   if (verify.code !== 0) {
     throw new Error(`DMG verify failed: ${verify.stderr || verify.stdout}`);
@@ -40,6 +99,7 @@ async function runWindowsSmoke() {
   const msi = await firstFile("src-tauri/target/release/bundle/msi", ".msi");
   await assertFileHealthy(exe, "NSIS installer");
   await assertFileHealthy(msi, "MSI installer");
+  await verifySidecarResources();
 }
 
 async function main() {

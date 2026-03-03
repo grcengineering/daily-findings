@@ -80,6 +80,8 @@ jobs:
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run start -- -p 3199 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID >/dev/null 2>&1 || true" EXIT
           npx wait-on http://127.0.0.1:3199 --timeout 60000
           npm run qa
 

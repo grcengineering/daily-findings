@@ -51,6 +51,17 @@ const parser = new Parser({
   },
 });
 
+function looksLikeImageUrl(url: string): boolean {
+  try {
+    if (url.startsWith("data:image/")) return true;
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.toLowerCase();
+    return /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico)$/i.test(pathname);
+  } catch {
+    return false;
+  }
+}
+
 function isSafeRssUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -64,15 +75,20 @@ function isSafeRssUrl(url: string): boolean {
 
 function extractImage(item: Record<string, unknown>): string | undefined {
   const enc = item.enclosure as Record<string, string> | undefined;
-  if (enc?.url && enc.url.length > 0) return enc.url;
+  if (enc?.url && enc.url.length > 0) {
+    const enclosureType = (enc.type || "").toLowerCase();
+    if (enclosureType.startsWith("image/") || looksLikeImageUrl(enc.url)) {
+      return enc.url;
+    }
+  }
 
   const content = (item.content || item["content:encoded"] || "") as string;
   const match = content.match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (match?.[1]) return match[1];
+  if (match?.[1] && looksLikeImageUrl(match[1])) return match[1];
 
   const desc = (item.description || "") as string;
   const descMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (descMatch?.[1]) return descMatch[1];
+  if (descMatch?.[1] && looksLikeImageUrl(descMatch[1])) return descMatch[1];
 
   return undefined;
 }

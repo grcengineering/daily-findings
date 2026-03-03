@@ -154,24 +154,28 @@ jobs:
         run: npm ci
 
       - name: Initialize database
+        shell: bash
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npx prisma db push
 
       - name: Seed release library snapshot (tag builds)
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:seed:release
 
       - name: Seed placeholder library (non-release branches only)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        shell: bash
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:seed:expanded
 
       - name: Verify release library quality
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:verify

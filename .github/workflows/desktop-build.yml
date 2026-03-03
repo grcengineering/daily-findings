@@ -52,23 +52,7 @@ jobs:
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           set +e
-          node - <<'NODE'
-          const { PrismaClient } = require("@prisma/client");
-          const prisma = new PrismaClient();
-          prisma.sessionContent
-            .count()
-            .then((count) => {
-              console.log(`SessionContent rows before verify: ${count}`);
-              process.exit(0);
-            })
-            .catch((error) => {
-              console.error(`SessionContent probe failed: ${error.message}`);
-              process.exit(2);
-            })
-            .finally(async () => {
-              await prisma.$disconnect();
-            });
-NODE
+          node -e "const {PrismaClient}=require('@prisma/client'); const prisma=new PrismaClient(); prisma.sessionContent.count().then((count)=>{console.log('SessionContent rows before verify: '+count); process.exit(0);}).catch((error)=>{console.error('SessionContent probe failed: '+error.message); process.exit(2);}).finally(async()=>{await prisma.$disconnect();});"
           probe_exit=$?
           set -e
           if [ "$probe_exit" -eq 2 ]; then
@@ -175,23 +159,7 @@ NODE
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           set +e
-          node - <<'NODE'
-          const { PrismaClient } = require("@prisma/client");
-          const prisma = new PrismaClient();
-          prisma.sessionContent
-            .count()
-            .then((count) => {
-              console.log(`SessionContent rows before verify: ${count}`);
-              process.exit(0);
-            })
-            .catch((error) => {
-              console.error(`SessionContent probe failed: ${error.message}`);
-              process.exit(2);
-            })
-            .finally(async () => {
-              await prisma.$disconnect();
-            });
-NODE
+          node -e "const {PrismaClient}=require('@prisma/client'); const prisma=new PrismaClient(); prisma.sessionContent.count().then((count)=>{console.log('SessionContent rows before verify: '+count); process.exit(0);}).catch((error)=>{console.error('SessionContent probe failed: '+error.message); process.exit(2);}).finally(async()=>{await prisma.$disconnect();});"
           probe_exit=$?
           set -e
           if [ "$probe_exit" -eq 2 ]; then

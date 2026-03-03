@@ -43,12 +43,26 @@ jobs:
 
       - name: Initialize database
         run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npx prisma db push
+
+      - name: Seed release library snapshot (tag builds)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:seed:release
+
+      - name: Seed placeholder library (non-release branches only)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:seed:expanded
 
       - name: Verify release library quality
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm run library:verify
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:verify
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -64,7 +78,10 @@ jobs:
 
       - name: Start server and run QA
         run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run start -- -p 3199 &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID >/dev/null 2>&1 || true" EXIT
           npx wait-on http://127.0.0.1:3199 --timeout 60000
           npm run qa
 
@@ -138,12 +155,26 @@ jobs:
 
       - name: Initialize database
         run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npx prisma db push
+
+      - name: Seed release library snapshot (tag builds)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:seed:release
+
+      - name: Seed placeholder library (non-release branches only)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:seed:expanded
 
       - name: Verify release library quality
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm run library:verify
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:verify
 
       - name: Import Apple signing certificate (optional)
         if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true' && env.HAS_APPLE_SIGNING_IDENTITY == 'true'

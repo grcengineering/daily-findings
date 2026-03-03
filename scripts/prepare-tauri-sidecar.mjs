@@ -129,12 +129,28 @@ async function main() {
     await cp(publicDir, path.join(targetDir, "public"), { recursive: true });
   }
 
+  const targetDb = path.join(targetDir, "dev.db");
+  const fallbackDbCandidates = [
+    path.join(targetDir, "prisma", "dev.db"),
+    path.join(targetDir, "prisma", "prisma", "dev.db"),
+  ];
+
+  let copiedDb = false;
   if (await exists(sqliteDb)) {
-    const targetDb = path.join(targetDir, "dev.db");
-    await cp(sqliteDb, targetDb);
-    if (cleanShareBuild) {
-      await sanitizeDatabaseForCleanShare(targetDb);
+    await cp(sqliteDb, targetDb, { force: true });
+    copiedDb = true;
+  } else {
+    for (const candidate of fallbackDbCandidates) {
+      if (await exists(candidate)) {
+        await cp(candidate, targetDb, { force: true });
+        copiedDb = true;
+        break;
+      }
     }
+  }
+
+  if (copiedDb && cleanShareBuild) {
+    await sanitizeDatabaseForCleanShare(targetDb);
   }
 
   await mkdir(resourcesDir, { recursive: true });

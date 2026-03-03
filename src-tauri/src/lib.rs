@@ -96,7 +96,25 @@ fn trusted_env_node_bin() -> Option<PathBuf> {
 fn start_sidecar(app: &tauri::AppHandle) -> Result<Child, String> {
   let sidecar_dir = resource_sidecar_dir(app)?;
   let server_js = sidecar_dir.join("server.js");
-  let db_path = sidecar_dir.join("dev.db");
+  let db_candidates = [
+    sidecar_dir.join("dev.db"),
+    sidecar_dir.join("prisma").join("dev.db"),
+    sidecar_dir.join("prisma").join("prisma").join("dev.db"),
+  ];
+  let db_path = db_candidates
+    .iter()
+    .find(|candidate| candidate.exists())
+    .cloned()
+    .ok_or_else(|| {
+      format!(
+        "Missing sidecar database. Checked: {}",
+        db_candidates
+          .iter()
+          .map(|p| p.display().to_string())
+          .collect::<Vec<_>>()
+          .join(", ")
+      )
+    })?;
   if !server_js.exists() {
     return Err(format!(
       "Missing Next sidecar at {:?}. Run `npm run tauri:prepare` before building Tauri.",

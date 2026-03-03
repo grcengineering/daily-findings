@@ -16,6 +16,7 @@
     "curriculum:generate": "tsx scripts/generate-schema-library.ts",
     "library:generate": "tsx scripts/generate-library.ts",
     "library:seed:expanded": "tsx scripts/seed-expanded-library.ts",
+    "library:verify": "node scripts/verify-library-quality.mjs",
     "curriculum:validate": "tsx scripts/validate-curriculum.ts",
     "quiz:analytics:compute": "tsx scripts/compute-quiz-analytics.ts",
     "quiz:analytics:report": "tsx scripts/quiz-analytics-report.ts",

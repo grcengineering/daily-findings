@@ -46,6 +46,10 @@ jobs:
           npx prisma db push
           npm run library:seed:expanded
 
+      - name: Verify release library quality
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm run library:verify
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
@@ -136,6 +140,10 @@ jobs:
         run: |
           npx prisma db push
           npm run library:seed:expanded
+
+      - name: Verify release library quality
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm run library:verify
 
       - name: Import Apple signing certificate (optional)
         if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERTIFICATE == 'true' && env.HAS_APPLE_CERTIFICATE_PASSWORD == 'true' && env.HAS_APPLE_SIGNING_IDENTITY == 'true'

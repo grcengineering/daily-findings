@@ -3,8 +3,10 @@ import { config } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import path from "node:path";
 
-config({ path: ".env.local" });
-config({ path: ".env" });
+if (!process.env.DATABASE_URL) {
+  config({ path: ".env.local" });
+  config({ path: ".env" });
+}
 
 const dbUrl = process.env.DATABASE_URL ?? "";
 if (dbUrl.startsWith("file:./")) {

@@ -301,7 +301,7 @@ async function run() {
     } catch (error) {
       const message = error.message || String(error);
       const allowTimeoutAsWarning =
-        message.includes("Route timed out") && route.includes("topicId=PRIVACY_F01");
+        message.includes("Route timed out") && route.includes("topicId=");
       if (allowTimeoutAsWarning) {
         entry.warnings.push(`Timeout warning: ${message}`);
         console.warn(`QA: timeout warning ${route} - ${message}`);

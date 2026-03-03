@@ -78,6 +78,7 @@ jobs:
 
       - name: Start server and run QA
         run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run start -- -p 3199 &
           npx wait-on http://127.0.0.1:3199 --timeout 60000
           npm run qa

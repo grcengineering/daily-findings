@@ -45,21 +45,17 @@ jobs:
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npx prisma db push
+
+      - name: Seed placeholder library (non-release branches only)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:seed:expanded
 
       - name: Verify release library quality
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
-          set +e
-          node -e "const {PrismaClient}=require('@prisma/client'); const prisma=new PrismaClient(); prisma.sessionContent.count().then((count)=>{console.log('SessionContent rows before verify: '+count); process.exit(0);}).catch((error)=>{console.error('SessionContent probe failed: '+error.message); process.exit(2);}).finally(async()=>{await prisma.$disconnect();});"
-          probe_exit=$?
-          set -e
-          if [ "$probe_exit" -eq 2 ]; then
-            echo "Rebuilding database for release verification..."
-            npx prisma db push
-            npm run library:seed:expanded
-          fi
           npm run library:verify
 
       - name: Install Playwright browser
@@ -152,21 +148,17 @@ jobs:
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npx prisma db push
+
+      - name: Seed placeholder library (non-release branches only)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
           npm run library:seed:expanded
 
       - name: Verify release library quality
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
-          set +e
-          node -e "const {PrismaClient}=require('@prisma/client'); const prisma=new PrismaClient(); prisma.sessionContent.count().then((count)=>{console.log('SessionContent rows before verify: '+count); process.exit(0);}).catch((error)=>{console.error('SessionContent probe failed: '+error.message); process.exit(2);}).finally(async()=>{await prisma.$disconnect();});"
-          probe_exit=$?
-          set -e
-          if [ "$probe_exit" -eq 2 ]; then
-            echo "Rebuilding database for release verification..."
-            npx prisma db push
-            npm run library:seed:expanded
-          fi
           npm run library:verify
 
       - name: Import Apple signing certificate (optional)

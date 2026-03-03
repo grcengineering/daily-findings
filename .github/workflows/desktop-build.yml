@@ -42,19 +42,27 @@ jobs:
         run: npm ci
 
       - name: Initialize database
-        run: npx prisma db push
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npx prisma db push
 
       - name: Seed release library snapshot (tag builds)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm run library:seed:release
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:seed:release
 
       - name: Seed placeholder library (non-release branches only)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        run: npm run library:seed:expanded
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:seed:expanded
 
       - name: Verify release library quality
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm run library:verify
+        run: |
+          export DATABASE_URL="file:${GITHUB_WORKSPACE}/prisma/dev.db"
+          npm run library:verify
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

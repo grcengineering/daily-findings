@@ -57,6 +57,43 @@ fn wait_for_server(host: &str, port: u16, timeout: Duration) -> bool {
   false
 }
 
+fn kill_stale_port_holder(port: u16, logfile: &mut Option<fs::File>) {
+  if TcpStream::connect((SIDECAR_HOST, port)).is_err() {
+    log!(logfile, "Port {} is free", port);
+    return;
+  }
+  log!(logfile, "Port {} is occupied, killing stale process", port);
+
+  #[cfg(unix)]
+  {
+    let output = Command::new("lsof")
+      .args(["-ti", &format!(":{}", port)])
+      .output();
+    if let Ok(out) = output {
+      let pids = String::from_utf8_lossy(&out.stdout);
+      for pid_str in pids.split_whitespace() {
+        log!(logfile, "Killing stale PID {} on port {}", pid_str, port);
+        let _ = Command::new("kill").args(["-9", pid_str]).output();
+      }
+    }
+  }
+
+  #[cfg(windows)]
+  {
+    let _ = Command::new("cmd")
+      .args(["/C", &format!("for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", port)])
+      .output();
+  }
+
+  thread::sleep(Duration::from_millis(500));
+  log!(
+    logfile,
+    "Port {} after cleanup: {}",
+    port,
+    if TcpStream::connect((SIDECAR_HOST, port)).is_ok() { "still occupied" } else { "free" }
+  );
+}
+
 fn kill_sidecar(state: &SidecarState) {
   if let Ok(mut lock) = state.child.lock() {
     if let Some(ref mut child) = *lock {
@@ -260,7 +297,9 @@ fn start_sidecar(
     Stdio::null()
   };
 
-  Command::new(&node_bin)
+  kill_stale_port_holder(SIDECAR_PORT, logfile);
+
+  let mut child = Command::new(&node_bin)
     .arg(&server_js)
     .current_dir(&sidecar_dir)
     .env("HOSTNAME", SIDECAR_HOST)
@@ -276,7 +315,24 @@ fn start_sidecar(
       );
       log!(logfile, "SPAWN ERROR: {}", msg);
       msg
-    })
+    })?;
+
+  thread::sleep(Duration::from_millis(500));
+  match child.try_wait() {
+    Ok(Some(status)) => {
+      let msg = format!("Sidecar exited immediately with {status}");
+      log!(logfile, "ERROR: {}", msg);
+      return Err(msg);
+    }
+    Ok(None) => {
+      log!(logfile, "Sidecar process alive (pid={})", child.id());
+    }
+    Err(e) => {
+      log!(logfile, "Could not check sidecar status: {e}");
+    }
+  }
+
+  Ok(child)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -324,6 +380,13 @@ pub fn run() {
         }
       }
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|app, event| {
+      if let tauri::RunEvent::Exit = event {
+        if let Some(state) = app.try_state::<SidecarState>() {
+          kill_sidecar(&state);
+        }
+      }
+    });
 }

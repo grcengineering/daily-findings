@@ -180,7 +180,7 @@ fn start_sidecar(app: &tauri::AppHandle) -> Result<Child, String> {
     .current_dir(&sidecar_dir)
     .env("HOSTNAME", SIDECAR_HOST)
     .env("PORT", SIDECAR_PORT.to_string())
-    .env("DATABASE_URL", format!("file:{}", db_path.display()))
+    .env("DATABASE_URL", format!("file:{}", db_path.display().to_string().replace(' ', "%20")))
     .spawn()
     .map_err(|e| format!("Failed to start Next sidecar: {e}"))
 }

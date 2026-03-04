@@ -1,3 +1,4 @@
+use std::fs;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -93,28 +94,65 @@ fn trusted_env_node_bin() -> Option<PathBuf> {
   }
 }
 
-fn start_sidecar(app: &tauri::AppHandle) -> Result<Child, String> {
-  let sidecar_dir = resource_sidecar_dir(app)?;
-  let server_js = sidecar_dir.join("server.js");
-  let db_candidates = [
+fn find_bundled_db(sidecar_dir: &PathBuf) -> Option<PathBuf> {
+  let candidates = [
     sidecar_dir.join("dev.db"),
     sidecar_dir.join("prisma").join("dev.db"),
     sidecar_dir.join("prisma").join("prisma").join("dev.db"),
   ];
-  let db_path = db_candidates
-    .iter()
-    .find(|candidate| candidate.exists())
-    .cloned()
-    .ok_or_else(|| {
+  candidates.into_iter().find(|c| c.exists())
+}
+
+fn writable_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+  let app_data = app
+    .path()
+    .app_data_dir()
+    .map_err(|e| format!("Failed to resolve app data directory: {e}"))?;
+  fs::create_dir_all(&app_data)
+    .map_err(|e| format!("Failed to create app data directory: {e}"))?;
+  Ok(app_data.join("dev.db"))
+}
+
+fn ensure_writable_db(app: &tauri::AppHandle, sidecar_dir: &PathBuf) -> Result<PathBuf, String> {
+  let bundled = find_bundled_db(sidecar_dir).ok_or_else(|| {
+    format!(
+      "Missing sidecar database. Checked: {}/dev.db, {}/prisma/dev.db",
+      sidecar_dir.display(),
+      sidecar_dir.display()
+    )
+  })?;
+  let dest = writable_db_path(app)?;
+
+  let should_copy = if dest.exists() {
+    let bundled_size = fs::metadata(&bundled).map(|m| m.len()).unwrap_or(0);
+    let dest_size = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+    bundled_size > dest_size
+  } else {
+    true
+  };
+
+  if should_copy {
+    fs::copy(&bundled, &dest).map_err(|e| {
       format!(
-        "Missing sidecar database. Checked: {}",
-        db_candidates
-          .iter()
-          .map(|p| p.display().to_string())
-          .collect::<Vec<_>>()
-          .join(", ")
+        "Failed to copy database from {} to {}: {e}",
+        bundled.display(),
+        dest.display()
       )
     })?;
+    // Remove stale journal/WAL files from a previous copy
+    let _ = fs::remove_file(dest.with_extension("db-journal"));
+    let _ = fs::remove_file(dest.with_extension("db-wal"));
+    let _ = fs::remove_file(dest.with_extension("db-shm"));
+  }
+
+  Ok(dest)
+}
+
+fn start_sidecar(app: &tauri::AppHandle) -> Result<Child, String> {
+  let sidecar_dir = resource_sidecar_dir(app)?;
+  let server_js = sidecar_dir.join("server.js");
+  let db_path = ensure_writable_db(app, &sidecar_dir)?;
+
   if !server_js.exists() {
     return Err(format!(
       "Missing Next sidecar at {:?}. Run `npm run tauri:prepare` before building Tauri.",

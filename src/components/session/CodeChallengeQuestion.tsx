@@ -1,7 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
+import {
+  ensureMonacoConfigured,
+  resetMonacoConfiguration,
+} from "@/lib/configure-monaco";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "./CodeBlock";
@@ -38,6 +42,44 @@ export function CodeChallengeQuestion({ item, onComplete }: CodeChallengeQuestio
   const [showSolution, setShowSolution] = useState(false);
   const [expandedEditor, setExpandedEditor] = useState(false);
   const [result, setResult] = useState<{ passed: boolean; messages: string[] } | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let loadDone = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled && !loadDone) {
+        setEditorError(
+          "The code editor is taking too long to load. Check your connection, then try again."
+        );
+      }
+    }, 25000);
+
+    ensureMonacoConfigured()
+      .then(() => {
+        loadDone = true;
+        window.clearTimeout(timeoutId);
+        if (!cancelled) {
+          setEditorReady(true);
+          setEditorError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        loadDone = true;
+        window.clearTimeout(timeoutId);
+        if (!cancelled) {
+          setEditorError(
+            err instanceof Error ? err.message : "Could not load the code editor."
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const monacoLanguage = useMemo(() => {
     const lang = item.language.toLowerCase();
@@ -95,6 +137,7 @@ export function CodeChallengeQuestion({ item, onComplete }: CodeChallengeQuestio
             variant="ghost"
             size="sm"
             onClick={() => setExpandedEditor(true)}
+            disabled={!editorReady}
             aria-label="Enlarge code editor"
             className="gap-1"
           >
@@ -102,18 +145,57 @@ export function CodeChallengeQuestion({ item, onComplete }: CodeChallengeQuestio
             Enlarge
           </Button>
         </div>
-        <Editor
-          value={code}
-          onChange={(value) => setCode(value ?? "")}
-          language={monacoLanguage}
-          height="300px"
-          theme="vs-dark"
-          options={{ minimap: { enabled: false }, wordWrap: "off", fontSize: 13 }}
-        />
+        {editorError ? (
+          <div className="min-h-[300px] flex flex-col items-center justify-center gap-3 px-4 py-8 bg-muted/20 text-center">
+            <p className="text-sm text-muted-foreground max-w-md">{editorError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setEditorError(null);
+                setEditorReady(false);
+                resetMonacoConfiguration();
+                void ensureMonacoConfigured()
+                  .then(() => {
+                    setEditorReady(true);
+                    setEditorError(null);
+                  })
+                  .catch((err: unknown) => {
+                    setEditorError(
+                      err instanceof Error ? err.message : "Could not load the code editor."
+                    );
+                  });
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : !editorReady ? (
+          <div className="min-h-[300px] flex items-center justify-center text-sm text-muted-foreground bg-muted/20">
+            Preparing editor&hellip;
+          </div>
+        ) : (
+          <Editor
+            value={code}
+            onChange={(value) => setCode(value ?? "")}
+            language={monacoLanguage}
+            height="300px"
+            theme="vs-dark"
+            options={{ minimap: { enabled: false }, wordWrap: "off", fontSize: 13 }}
+            loading={
+              <div className="min-h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+                Preparing editor&hellip;
+              </div>
+            }
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <Button onClick={runCheck}>Run Check</Button>
+        <Button onClick={runCheck} disabled={!editorReady}>
+          Run Check
+        </Button>
         <Button variant="outline" onClick={() => setCode(item.starter_code)}>
           Reset
         </Button>
@@ -156,7 +238,7 @@ export function CodeChallengeQuestion({ item, onComplete }: CodeChallengeQuestio
         </div>
       )}
 
-      {expandedEditor && (
+      {expandedEditor && editorReady && (
         <div className="fixed inset-0 z-[70] bg-black/85 p-4 md:p-8">
           <div className="h-full rounded-xl border border-zinc-700 bg-zinc-950 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">

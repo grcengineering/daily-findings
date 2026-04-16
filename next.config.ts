@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+              // Monaco Editor creates language workers as blob: / data: URLs; without this, strict
+              // browsers can block them while the script-src fallback is inconsistent.
+              "worker-src 'self' blob: data:",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",

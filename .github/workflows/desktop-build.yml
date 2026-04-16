@@ -383,7 +383,9 @@ jobs:
           cp release-assets/daily-findings-windows-checksums/CHECKSUMS.txt release-assets/publish/daily-findings-windows-CHECKSUMS.txt
 
       - name: Create GitHub release with assets
-        uses: step-security/action-gh-release@d45511d7589f080cf54961ff056b9705a74fd160 # v2.5.0
+        # step-security/action-gh-release requires a paid StepSecurity subscription and failed with
+        # "Subscription is not valid" — use the community action instead.
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
           generate_release_notes: true
           body: |

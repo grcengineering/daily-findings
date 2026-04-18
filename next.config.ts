@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Ensure the release snapshot JSON travels into the standalone output
+  // so the Tauri sidecar can reseed `SessionContent` at runtime via
+  // src/instrumentation.ts.
+  outputFileTracingIncludes: {
+    "/": ["./data/release-library/session-content.json"],
+  },
   async headers() {
     return [
       {

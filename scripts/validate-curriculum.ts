@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import * as fs from "fs";
 import * as path from "path";
 import { validateQuizDeterministic } from "../src/lib/quiz-validation";
+import { toKeyTerms } from "../src/lib/curriculum";
 
 const VALID_MODULE_TYPES = ["core", "depth", "specialization", "capstone"] as const;
 
@@ -196,12 +197,35 @@ async function validatePrismaSessionContent(): Promise<string[]> {
   }
 }
 
+function validateKeyTermAcronyms(): string[] {
+  // Quick guard for the regression where toKeyTerms filtered out
+  // anything <= 3 characters and silently dropped acronyms like "AI".
+  const issues: string[] = [];
+  const cases: Array<{ title: string; expected: string }> = [
+    { title: "AI Governance", expected: "AI" },
+    { title: "GRC Engineering Foundations", expected: "GRC" },
+    { title: "ISO 27001 Controls", expected: "ISO 27001" },
+  ];
+  for (const { title, expected } of cases) {
+    const terms = toKeyTerms(title);
+    if (!terms.some((term) => term.includes(expected))) {
+      issues.push(
+        `[keyTerms] toKeyTerms("${title}") returned ${JSON.stringify(terms)} — expected to include "${expected}"`
+      );
+    }
+  }
+  return issues;
+}
+
 async function main() {
   const issues: string[] = [];
 
   // 1. Validate canonical curriculum (JSON) - critical, always run
   const curriculumIssues = validateCanonicalCurriculum();
   issues.push(...curriculumIssues);
+
+  // 1b. Guard the curriculum keyTerms acronym regression
+  issues.push(...validateKeyTermAcronyms());
 
   // 2. Validate Prisma session content when DB has data
   try {

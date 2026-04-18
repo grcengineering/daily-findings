@@ -119,7 +119,7 @@ function splitLongParagraph(content: string): string[] {
   if (normalized.length <= 320) return [normalized];
 
   const sentences =
-    normalized.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g)?.map((s) => s.trim()) ?? [];
+    normalized.match(/.+?(?:[.!?]+(?:\s+|$)|$)/g)?.map((s) => s.trim()) ?? [];
 
   if (sentences.length <= 1) {
     // Fallback: split by approximate length when punctuation is sparse.
@@ -216,7 +216,7 @@ function parseBlocks(text: string): Block[] {
       continue;
     }
 
-    const numberedMatch = trimmed.match(/^\d+[.)]\s+(.+)/);
+    const numberedMatch = trimmed.match(/^\s*\d+[.)]\s+(.+)/);
     if (numberedMatch) {
       flushParagraph();
       if (currentList?.type !== "numbered") {

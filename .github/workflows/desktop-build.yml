@@ -218,8 +218,24 @@ jobs:
             exit 1
           fi
 
-          # Ad-hoc sign the app in unsigned mode to prevent invalid-signature DMGs.
-          codesign --force --deep --sign - "$APP_PATH"
+          ENTITLEMENTS="$GITHUB_WORKSPACE/src-tauri/Entitlements.plist"
+          if [ ! -f "$ENTITLEMENTS" ]; then
+            echo "Missing entitlements file at $ENTITLEMENTS"
+            exit 1
+          fi
+
+          # Sign nested executables (bundled Node runtime) first with hardened
+          # runtime + entitlements so V8's JIT works and Prisma's native query
+          # engine can be loaded under disable-library-validation.
+          if [ -d "$APP_PATH/Contents/Resources/node-runtime" ]; then
+            find "$APP_PATH/Contents/Resources/node-runtime" -type f -perm +111 -print0 \
+              | xargs -0 -I{} codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign - "{}"
+          fi
+          # Re-sign all .dylib / .node native modules so the outer --deep sign succeeds.
+          find "$APP_PATH/Contents/Resources" \( -name "*.dylib" -o -name "*.node" \) -print0 \
+            | xargs -0 -I{} codesign --force --options runtime --sign - "{}" || true
+          # Finally sign the .app deeply with the same entitlements.
+          codesign --force --deep --options runtime --entitlements "$ENTITLEMENTS" --sign - "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
           APP_NAME=$(basename "$APP_PATH")
@@ -391,13 +407,15 @@ jobs:
           body: |
             ## Install notes (important)
 
-            macOS builds may be unsigned in this release pipeline when Apple signing secrets are not configured.
+            macOS builds may be unsigned in this release pipeline when Apple signing secrets are not configured. Starting with v0.2.8 the bundled Node sidecar is signed with hardened-runtime entitlements (JIT + library-validation disabled) so the sidecar boots even on unsigned builds, and the Rust launcher self-strips the `com.apple.quarantine` xattr on first launch.
 
             - Open the `.dmg` and drag **Daily Findings** to Applications.
             - First launch: right-click `Daily Findings.app` -> **Open** -> **Open**.
             - If still blocked, open **System Settings -> Privacy & Security** and click **Open Anyway**.
-            - If quarantine still blocks launch, run:
+            - If quarantine still blocks launch (very rare in v0.2.8+), run:
               `xattr -dr com.apple.quarantine "/Applications/Daily Findings.app"`
+
+            Lesson content self-heals on every launch from the bundled release snapshot — your XP, streaks, and completions are preserved across upgrades. If the library is still empty after launch, open `/diagnostics` inside the app and share the `sidecarLog` / `nextStdoutLog` values when filing an issue.
 
             Windows builds may be unsigned when Windows signing secrets are not configured.
 

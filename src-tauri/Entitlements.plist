@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Required for the bundled Node.js sidecar to run under macOS hardened
+    runtime. Without these entitlements Gatekeeper / amfid silently kills
+    the Node child process and the WebView hangs on "Loading...".
+
+    - allow-jit + allow-unsigned-executable-memory: V8 / TurboFan JIT.
+    - disable-library-validation: load Prisma's native query engine
+      (libquery_engine-darwin-*.dylib.node) which is signed with a
+      different team identifier than our app.
+  -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+</dict>
+</plist>

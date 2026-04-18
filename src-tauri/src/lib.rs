@@ -1,7 +1,27 @@
+// Daily Findings desktop sidecar bootstrap.
+//
+// Boot flow:
+//   1. setup() opens sidecar.log in the app data dir.
+//   2. (macOS only) strip the com.apple.quarantine xattr from the .app
+//      bundle so users who downloaded via Safari are not blocked by
+//      Gatekeeper before the bundled Node runtime ever starts.
+//   3. ensure_writable_db copies the bundled SQLite seed to the user's
+//      app-data dir IF AND ONLY IF the user database does not already
+//      exist. The user DB is never overwritten — content updates are
+//      reconciled at the application layer by src/instrumentation.ts
+//      against data/release-library/session-content.json so that user
+//      progress (XP, streaks, completions, analytics) is preserved.
+//   4. start_sidecar spawns the Node child with BOTH stdout and stderr
+//      redirected to log files in the app data dir.
+//   5. wait_for_server polls 127.0.0.1:1430 (port mirrored in
+//      tauri.conf.json window.url).
+//
+// SIDECAR_PORT must stay in sync with tauri.conf.json `windows[0].url`.
+
 use std::fs;
 use std::io::Write;
 use std::net::TcpStream;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
@@ -57,12 +77,47 @@ fn wait_for_server(host: &str, port: u16, timeout: Duration) -> bool {
   false
 }
 
-fn kill_stale_port_holder(port: u16, logfile: &mut Option<fs::File>) {
+/// Returns true when `pid` looks like a Node process we own. Used to gate
+/// the destructive `kill -9` in `kill_stale_port_holder` so we never nuke
+/// an unrelated dev server the user has bound to port 1430.
+fn pid_is_node(pid: &str) -> bool {
+  #[cfg(unix)]
+  {
+    let output = Command::new("ps")
+      .args(["-o", "comm=", "-p", pid])
+      .output();
+    if let Ok(out) = output {
+      let comm = String::from_utf8_lossy(&out.stdout);
+      let comm = comm.trim().to_lowercase();
+      let basename = Path::new(&comm)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&comm)
+        .to_string();
+      return basename == "node";
+    }
+    false
+  }
+
+  #[cfg(windows)]
+  {
+    let output = Command::new("tasklist")
+      .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+      .output();
+    if let Ok(out) = output {
+      let line = String::from_utf8_lossy(&out.stdout).to_lowercase();
+      return line.contains("node.exe");
+    }
+    false
+  }
+}
+
+fn kill_stale_port_holder(port: u16, logfile: &mut Option<fs::File>) -> Result<(), String> {
   if TcpStream::connect((SIDECAR_HOST, port)).is_err() {
     log!(logfile, "Port {} is free", port);
-    return;
+    return Ok(());
   }
-  log!(logfile, "Port {} is occupied, killing stale process", port);
+  log!(logfile, "Port {} is occupied, identifying holder", port);
 
   #[cfg(unix)]
   {
@@ -72,17 +127,58 @@ fn kill_stale_port_holder(port: u16, logfile: &mut Option<fs::File>) {
     if let Ok(out) = output {
       let pids = String::from_utf8_lossy(&out.stdout);
       for pid_str in pids.split_whitespace() {
-        log!(logfile, "Killing stale PID {} on port {}", pid_str, port);
-        let _ = Command::new("kill").args(["-9", pid_str]).output();
+        if pid_is_node(pid_str) {
+          log!(logfile, "Killing stale node PID {} on port {}", pid_str, port);
+          let _ = Command::new("kill").args(["-9", pid_str]).output();
+        } else {
+          log!(
+            logfile,
+            "Refusing to kill PID {} on port {} (not node) — aborting startup",
+            pid_str,
+            port
+          );
+          return Err(format!(
+            "Port {} is in use by a non-node process (PID {}). Quit it and relaunch.",
+            port, pid_str
+          ));
+        }
       }
     }
   }
 
   #[cfg(windows)]
   {
-    let _ = Command::new("cmd")
-      .args(["/C", &format!("for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", port)])
+    let output = Command::new("cmd")
+      .args([
+        "/C",
+        &format!(
+          "for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{} ^| findstr LISTENING') do @echo %a",
+          port
+        ),
+      ])
       .output();
+    if let Ok(out) = output {
+      let pids = String::from_utf8_lossy(&out.stdout);
+      for pid_str in pids.split_whitespace() {
+        if pid_is_node(pid_str) {
+          log!(logfile, "Killing stale node PID {} on port {}", pid_str, port);
+          let _ = Command::new("taskkill")
+            .args(["/F", "/PID", pid_str])
+            .output();
+        } else {
+          log!(
+            logfile,
+            "Refusing to kill PID {} on port {} (not node) — aborting startup",
+            pid_str,
+            port
+          );
+          return Err(format!(
+            "Port {} is in use by a non-node process (PID {}). Quit it and relaunch.",
+            port, pid_str
+          ));
+        }
+      }
+    }
   }
 
   thread::sleep(Duration::from_millis(500));
@@ -92,6 +188,7 @@ fn kill_stale_port_holder(port: u16, logfile: &mut Option<fs::File>) {
     port,
     if TcpStream::connect((SIDECAR_HOST, port)).is_ok() { "still occupied" } else { "free" }
   );
+  Ok(())
 }
 
 fn kill_sidecar(state: &SidecarState) {
@@ -103,6 +200,38 @@ fn kill_sidecar(state: &SidecarState) {
     *lock = None;
   }
 }
+
+/// macOS only: strip the com.apple.quarantine xattr from the application
+/// bundle so users who downloaded via Safari (or Chrome) are not blocked
+/// by Gatekeeper on second launch. Best-effort, never fails the boot.
+#[cfg(target_os = "macos")]
+fn strip_quarantine_from_self(logfile: &mut Option<fs::File>) {
+  let exe = match std::env::current_exe() {
+    Ok(p) => p,
+    Err(_) => return,
+  };
+  // current_exe lives at <Bundle>.app/Contents/MacOS/<binary>; walk up to .app.
+  let bundle = exe
+    .parent()
+    .and_then(|p| p.parent())
+    .and_then(|p| p.parent());
+  if let Some(bundle_path) = bundle {
+    if bundle_path.extension().and_then(|s| s.to_str()) == Some("app") {
+      log!(
+        logfile,
+        "Stripping com.apple.quarantine from {}",
+        bundle_path.display()
+      );
+      let _ = Command::new("xattr")
+        .args(["-dr", "com.apple.quarantine"])
+        .arg(bundle_path)
+        .output();
+    }
+  }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn strip_quarantine_from_self(_logfile: &mut Option<fs::File>) {}
 
 fn resource_sidecar_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
   let resource_paths = [
@@ -163,13 +292,17 @@ fn trusted_env_node_bin() -> Option<PathBuf> {
   }
 }
 
-fn find_bundled_db(sidecar_dir: &PathBuf) -> Option<PathBuf> {
-  let candidates = [
-    sidecar_dir.join("dev.db"),
-    sidecar_dir.join("prisma").join("dev.db"),
-    sidecar_dir.join("prisma").join("prisma").join("dev.db"),
-  ];
-  candidates.into_iter().find(|c| c.exists())
+/// The bundled seed database lives at exactly one canonical path:
+///   <sidecar_dir>/dev.db
+/// scripts/prepare-tauri-sidecar.mjs guarantees this and prunes any
+/// stale duplicates that Next's standalone copy may have dragged in.
+fn find_bundled_db(sidecar_dir: &Path) -> Option<PathBuf> {
+  let canonical = sidecar_dir.join("dev.db");
+  if canonical.exists() {
+    Some(canonical)
+  } else {
+    None
+  }
 }
 
 fn writable_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -182,15 +315,32 @@ fn writable_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
   Ok(app_data.join("dev.db"))
 }
 
+/// Copy the bundled seed DB into the user's app data dir IF AND ONLY IF
+/// no user DB exists yet. We never overwrite an existing user DB —
+/// content updates are reconciled at runtime by src/instrumentation.ts
+/// against the shipped session-content.json so user progress (XP, streaks,
+/// completions, analytics, reading positions) is preserved across upgrades.
 fn ensure_writable_db(
   app: &tauri::AppHandle,
-  sidecar_dir: &PathBuf,
+  sidecar_dir: &Path,
   logfile: &mut Option<fs::File>,
 ) -> Result<PathBuf, String> {
+  let dest = writable_db_path(app)?;
+  log!(logfile, "Writable DB target: {}", dest.display());
+
+  if dest.exists() {
+    let dest_size = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+    log!(
+      logfile,
+      "User DB exists ({}B) — preserving. Content will be reconciled at app layer.",
+      dest_size
+    );
+    return Ok(dest);
+  }
+
   let bundled = find_bundled_db(sidecar_dir).ok_or_else(|| {
     let msg = format!(
-      "Missing sidecar database. Checked: {}/dev.db, {}/prisma/dev.db",
-      sidecar_dir.display(),
+      "Missing bundled seed database at {}/dev.db",
       sidecar_dir.display()
     );
     log!(logfile, "ERROR: {}", msg);
@@ -198,48 +348,30 @@ fn ensure_writable_db(
   })?;
   log!(
     logfile,
-    "Bundled DB: {} ({}B)",
+    "Bundled seed DB: {} ({}B)",
     bundled.display(),
     fs::metadata(&bundled).map(|m| m.len()).unwrap_or(0)
   );
 
-  let dest = writable_db_path(app)?;
-  log!(logfile, "Writable DB target: {}", dest.display());
-
-  let should_copy = if dest.exists() {
-    let bundled_size = fs::metadata(&bundled).map(|m| m.len()).unwrap_or(0);
-    let dest_size = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
-    log!(
-      logfile,
-      "Dest exists: bundled={}B dest={}B copy={}",
-      bundled_size,
-      dest_size,
-      bundled_size > dest_size
+  fs::copy(&bundled, &dest).map_err(|e| {
+    let msg = format!(
+      "Failed to copy database from {} to {}: {e}",
+      bundled.display(),
+      dest.display()
     );
-    bundled_size > dest_size
-  } else {
-    log!(logfile, "Dest does not exist, will copy");
-    true
-  };
-
-  if should_copy {
-    fs::copy(&bundled, &dest).map_err(|e| {
-      let msg = format!(
-        "Failed to copy database from {} to {}: {e}",
-        bundled.display(),
-        dest.display()
-      );
-      log!(logfile, "COPY ERROR: {}", msg);
-      msg
-    })?;
-    let _ = fs::remove_file(dest.with_extension("db-journal"));
-    let _ = fs::remove_file(dest.with_extension("db-wal"));
-    let _ = fs::remove_file(dest.with_extension("db-shm"));
-    log!(logfile, "DB copied successfully");
-  }
-
+    log!(logfile, "COPY ERROR: {}", msg);
+    msg
+  })?;
+  let _ = fs::remove_file(dest.with_extension("db-journal"));
+  let _ = fs::remove_file(dest.with_extension("db-wal"));
+  let _ = fs::remove_file(dest.with_extension("db-shm"));
   let final_size = fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
-  log!(logfile, "Final DB: {} ({}B)", dest.display(), final_size);
+  log!(
+    logfile,
+    "Seeded user DB from bundle: {} ({}B)",
+    dest.display(),
+    final_size
+  );
   Ok(dest)
 }
 
@@ -279,25 +411,31 @@ fn start_sidecar(
     fallback
   };
 
-  let sidecar_log_path = app
-    .path()
-    .app_data_dir()
-    .ok()
-    .map(|d| d.join("next-stderr.log"));
+  let app_data = app.path().app_data_dir().ok();
+  let stderr_path = app_data.as_ref().map(|d| d.join("next-stderr.log"));
+  let stdout_path = app_data.as_ref().map(|d| d.join("next-stdout.log"));
 
-  let stderr_cfg = if let Some(ref path) = sidecar_log_path {
-    match fs::File::create(path) {
-      Ok(f) => {
-        log!(logfile, "Sidecar stderr → {}", path.display());
-        Stdio::from(f)
-      }
-      Err(_) => Stdio::null(),
+  let stderr_cfg = match stderr_path.as_ref().and_then(|p| {
+    fs::File::create(p).ok().map(|f| (f, p.clone()))
+  }) {
+    Some((f, p)) => {
+      log!(logfile, "Sidecar stderr -> {}", p.display());
+      Stdio::from(f)
     }
-  } else {
-    Stdio::null()
+    None => Stdio::null(),
   };
 
-  kill_stale_port_holder(SIDECAR_PORT, logfile);
+  let stdout_cfg = match stdout_path.as_ref().and_then(|p| {
+    fs::File::create(p).ok().map(|f| (f, p.clone()))
+  }) {
+    Some((f, p)) => {
+      log!(logfile, "Sidecar stdout -> {}", p.display());
+      Stdio::from(f)
+    }
+    None => Stdio::null(),
+  };
+
+  kill_stale_port_holder(SIDECAR_PORT, logfile)?;
 
   let mut child = Command::new(&node_bin)
     .arg(&server_js)
@@ -305,6 +443,7 @@ fn start_sidecar(
     .env("HOSTNAME", SIDECAR_HOST)
     .env("PORT", SIDECAR_PORT.to_string())
     .env("DATABASE_URL", &db_url)
+    .stdout(stdout_cfg)
     .stderr(stderr_cfg)
     .spawn()
     .map_err(|e| {
@@ -349,6 +488,8 @@ pub fn run() {
       };
       log!(logfile, "=== Daily Findings starting ===");
       log!(logfile, "Version: {}", env!("CARGO_PKG_VERSION"));
+
+      strip_quarantine_from_self(&mut logfile);
 
       let child = start_sidecar(&app.handle(), &mut logfile)?;
       {

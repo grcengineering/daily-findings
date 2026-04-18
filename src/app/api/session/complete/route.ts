@@ -222,8 +222,13 @@ export async function POST(request: NextRequest) {
             format: result.format ?? existing?.format ?? "multiple_choice",
             attemptCount,
             correctRate: attemptCount > 0 ? correctCount / attemptCount : null,
+            // Each session-complete payload represents one fresh attempt at
+            // a topic for that day, so a correct answer here counts as a
+            // first-try-correct increment. Retries within the same session
+            // surface in `retryCount`. The previous `&& !existing` guard
+            // pinned this counter to 0 forever for any returning question.
             firstTryCorrect:
-              (existing?.firstTryCorrect ?? 0) + (result.correct && !existing ? 1 : 0),
+              (existing?.firstTryCorrect ?? 0) + (result.correct ? 1 : 0),
             retryCount: (existing?.retryCount ?? 0) + (!result.correct ? 1 : 0),
             optionStats: JSON.stringify(optionStats),
           },

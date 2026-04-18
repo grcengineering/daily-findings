@@ -354,6 +354,25 @@ Versions follow semantic versioning (e.g. `0.1.8`). Release tags use the `v` pre
 
 ## Troubleshooting
 
+### Lessons missing or "Loading..." on a fresh install
+
+Starting in `v0.2.8` the desktop app self-heals lesson content on every launch — the bundled `data/release-library/session-content.json` snapshot is reconciled into your local SQLite DB at boot time, preserving your XP/streaks/completions. If you still see an empty library or "Loading...":
+
+1. macOS quarantine: open **System Settings → Privacy & Security** and click **Open Anyway**, or in a terminal run
+
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Daily Findings.app"
+   ```
+2. Open `daily-findings://diagnostics` (or [`/diagnostics`](http://127.0.0.1:1430/diagnostics) inside the running app) and confirm:
+   - `prismaStatus: "connected"`
+   - `sessionContentCount: 184`
+   - `seedGeneratedAt` matches the snapshot in this repo at `data/release-library/session-content.json`
+   - `sidecarLog` and `nextStdoutLog` show recent boot activity
+3. The sidecar writes three logs to your app data dir (`~/Library/Application Support/com.dailyfindings.desktop/` on macOS, `%APPDATA%\com.dailyfindings.desktop\` on Windows):
+   - `sidecar.log` – Rust launcher boot trace
+   - `next-stdout.log` – Next.js startup, instrumentation reseed messages
+   - `next-stderr.log` – Next.js / Prisma errors
+
 ### App looks like an older build
 
 - Kill stale app/sidecar processes and relaunch from `/Applications`.

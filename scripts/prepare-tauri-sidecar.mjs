@@ -1,4 +1,4 @@
-import { cp, mkdir, rm, access, writeFile, chmod } from "node:fs/promises";
+import { cp, mkdir, rm, access, writeFile, chmod, stat } from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -130,27 +130,49 @@ async function main() {
   }
 
   const targetDb = path.join(targetDir, "dev.db");
-  const fallbackDbCandidates = [
+  // Next's standalone output may drag in stale prisma/dev.db copies. Prune
+  // them so the Rust sidecar only ever sees the canonical seed.
+  const stalePaths = [
     path.join(targetDir, "prisma", "dev.db"),
+    path.join(targetDir, "prisma", "dev.db-journal"),
+    path.join(targetDir, "prisma", "dev.db-wal"),
+    path.join(targetDir, "prisma", "dev.db-shm"),
     path.join(targetDir, "prisma", "prisma", "dev.db"),
   ];
+  for (const stalePath of stalePaths) {
+    await rm(stalePath, { force: true });
+  }
 
   let copiedDb = false;
   if (await exists(sqliteDb)) {
     await cp(sqliteDb, targetDb, { force: true });
     copiedDb = true;
-  } else {
-    for (const candidate of fallbackDbCandidates) {
-      if (await exists(candidate)) {
-        await cp(candidate, targetDb, { force: true });
-        copiedDb = true;
-        break;
-      }
-    }
   }
 
-  if (copiedDb && cleanShareBuild) {
+  if (!copiedDb) {
+    throw new Error(
+      `Missing seed database at ${sqliteDb}. ` +
+        "Run `DATABASE_URL=file:./prisma/dev.db npx prisma db push && " +
+        "DATABASE_URL=file:./prisma/dev.db npm run library:seed:release` first."
+    );
+  }
+
+  if (cleanShareBuild) {
     await sanitizeDatabaseForCleanShare(targetDb);
+  }
+
+  // Sanity guard: a properly seeded SQLite snapshot containing all 184
+  // session-content rows is on the order of 7-10 MB. Anything under 1 MB
+  // is almost certainly a schema-only or empty database that would ship
+  // a "lessons not populating" build.
+  const MIN_SEED_BYTES = 1_000_000;
+  const seedStat = await stat(targetDb);
+  if (seedStat.size < MIN_SEED_BYTES) {
+    throw new Error(
+      `Bundled seed database at ${targetDb} is only ${seedStat.size} bytes. ` +
+        "Re-seed the release library before bundling: " +
+        "DATABASE_URL=file:./prisma/dev.db npm run library:seed:release"
+    );
   }
 
   await mkdir(resourcesDir, { recursive: true });

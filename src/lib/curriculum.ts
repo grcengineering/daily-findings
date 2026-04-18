@@ -104,11 +104,35 @@ const LEVEL_LABEL: Record<CurriculumModule["tier"], string> = {
   advanced: "Advanced",
 };
 
-function toKeyTerms(title: string): string[] {
+// Common English stopwords that show up as standalone tokens in module
+// titles ("for", "and", "the"). Kept short on purpose — we want acronyms
+// like AI / GRC / ISO / SOC to survive.
+const KEY_TERM_STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "into",
+  "from",
+  "your",
+  "you",
+  "are",
+  "but",
+  "not",
+  "all",
+  "any",
+  "its",
+  "their",
+  "this",
+  "that",
+]);
+
+export function toKeyTerms(title: string): string[] {
   return title
     .split(/[&,:()/-]/g)
     .map((part) => part.trim())
-    .filter((part) => part.length > 2)
+    .filter((part) => part.length >= 2)
+    .filter((part) => !KEY_TERM_STOPWORDS.has(part.toLowerCase()))
     .slice(0, 4);
 }
 

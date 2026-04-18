@@ -49,6 +49,12 @@ model UserStats {
   selectedPathId  String?
   ttsVoiceUri     String?
   ttsRate         Float   @default(1.0)
+  // Tracks the `generatedAt` timestamp of the bundled
+  // data/release-library/session-content.json snapshot that has been
+  // applied to this DB. Used by src/instrumentation.ts to decide whether
+  // to reseed SessionContent rows on app launch while preserving the
+  // user's progress/analytics. Nullable for backward compatibility.
+  seedGeneratedAt String?
 }
 
 model SessionContent {

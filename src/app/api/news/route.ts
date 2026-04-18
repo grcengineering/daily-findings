@@ -94,14 +94,24 @@ function extractImage(item: Record<string, unknown>): string | undefined {
 }
 
 function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "")
+  // Strip tags repeatedly until the input stabilises. A single pass is
+  // vulnerable to nested-tag attacks like `<scr<script>ipt>` collapsing
+  // back into a live tag. (CodeQL: incomplete multi-character sanitization.)
+  let prev = html;
+  let next = html.replace(/<[^>]*>/g, "");
+  while (next !== prev) {
+    prev = next;
+    next = next.replace(/<[^>]*>/g, "");
+  }
+  // Decode HTML entities last, and decode `&amp;` LAST so that
+  // sequences like `&amp;lt;` do not become `<`. (CodeQL: double unescaping.)
+  return next
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
     .replace(/\s+/g, " ")
     .trim();
 }

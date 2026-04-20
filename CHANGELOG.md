@@ -4,6 +4,35 @@ All notable changes to Daily Findings are documented here. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and release tags use
 the `v` prefix (e.g. `v0.2.8`).
 
+## v0.2.9 – Windows desktop build fix
+
+v0.2.8 shipped the macOS DMG successfully but the `v0.2.8` release was never
+published because the Windows leg of the `Desktop Build` workflow failed during
+`next build`. Turbopack's standalone output emitted externals chunk files
+named `[externals]_node:fs_promises_*.js` (and `_node:path_*.js`) whose literal
+`:` character is reserved on NTFS, causing `next build` to error with
+`EINVAL: invalid argument, copyfile ... .next/standalone/...` when copying
+chunks into the standalone directory. That aborted `npm run tauri:prepare`
+before any Windows bundle could be produced, and because one matrix leg
+failed, the `Publish GitHub Release` job was skipped.
+
+### Fixed
+
+- **Windows desktop build (`next build` → `EINVAL copyfile`)** – rewrote the
+  dynamic imports in `src/instrumentation.ts` to use the bare module
+  specifiers `fs/promises` and `path` instead of the `node:fs/promises` and
+  `node:path` schemes. Turbopack derives the Edge-runtime externals chunk
+  filename from the specifier, so dropping the `node:` scheme produces
+  colon-free filenames (`[externals]_fs_promises_*.js`,
+  `[externals]_path_*.js`) that Windows can copy into
+  `.next/standalone/.next/server/chunks/` without hitting `EINVAL`. Node 20
+  resolves both bare and `node:`-prefixed specifiers to the same builtin
+  modules at runtime, so boot-time seeding behavior is unchanged.
+
+There are no code changes outside `src/instrumentation.ts`; the release is a
+pure build-pipeline fix to get the Windows desktop bundle and the GitHub
+Release back in sync with the macOS DMG.
+
 ## v0.2.8 – Fresh-install lesson population reliability
 
 The headline goal of this release is "fresh installs always show all lessons".

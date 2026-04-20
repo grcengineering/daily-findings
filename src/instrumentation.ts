@@ -19,8 +19,18 @@ export async function register() {
 
   try {
     const { prisma } = await import("@/lib/db");
-    const { readFile } = await import("node:fs/promises");
-    const path = await import("node:path");
+    // NOTE: intentionally use the bare module specifiers ("fs/promises",
+    // "path") here — NOT the "node:" scheme. Turbopack's standalone build
+    // emits an externals chunk whose filename is derived from the specifier,
+    // and "node:fs/promises" produces a chunk named
+    // `[externals]_node:fs_promises_*.js`. The ':' is illegal on Windows
+    // (NTFS reserves it for Alternate Data Streams), which causes
+    // `next build` to fail on windows-latest with
+    // `EINVAL: invalid argument, copyfile ... .next/standalone/...`
+    // when copying chunks into .next/standalone. Dropping the scheme keeps
+    // the same Node builtin target while producing a colon-free chunk name.
+    const { readFile } = await import("fs/promises");
+    const path = await import("path");
     const {
       seedReleaseLibrary,
       snapshotIsNewer,
